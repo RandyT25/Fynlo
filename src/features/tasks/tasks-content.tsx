@@ -1,0 +1,165 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, ListChecks, Check, Trash2 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { format } from 'date-fns'
+import { toast } from 'sonner'
+import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { EmptyState } from '@/components/shared/empty-state'
+import { LoadingPage } from '@/components/shared/loading-spinner'
+import { formatDate } from '@/lib/utils/format'
+import { cn } from '@/lib/utils'
+import type { Task, Priority } from '@/types/database'
+
+const PRIORITY_COLORS: Record<Priority, string> = {
+  low: '#22C55E', medium: '#F59E0B', high: '#F97316', urgent: '#EF4444',
+}
+
+export function TasksContent() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [newTask, setNewTask] = useState({ title: '', description: '', due_date: '', priority: 'medium' as Priority, category: '' })
+  const supabase = createClient()
+
+  const fetchTasks = useCallback(async () => {
+    setIsLoading(true)
+    const { data } = await supabase.from('tasks').select('*').is('deleted_at', null).order('is_completed').order('due_date', { nullsFirst: false }).order('created_at', { ascending: false })
+    setTasks(data ?? [])
+    setIsLoading(false)
+  }, [])
+
+  useEffect(() => { fetchTasks() }, [fetchTasks])
+
+  const addTask = async () => {
+    if (!newTask.title.trim()) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { error } = await supabase.from('tasks').insert({ ...newTask, user_id: user.id, due_date: newTask.due_date || null })
+    if (error) { toast.error(error.message); return }
+    toast.success('Task added')
+    setShowForm(false)
+    setNewTask({ title: '', description: '', due_date: '', priority: 'medium', category: '' })
+    fetchTasks()
+  }
+
+  const toggleTask = async (task: Task) => {
+    await supabase.from('tasks').update({ is_completed: !task.is_completed, completed_at: !task.is_completed ? new Date().toISOString() : null }).eq('id', task.id)
+    fetchTasks()
+  }
+
+  const deleteTask = async (id: string) => {
+    await supabase.from('tasks').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+    toast.success('Task deleted')
+    fetchTasks()
+  }
+
+  const pending = tasks.filter(t => !t.is_completed)
+  const done = tasks.filter(t => t.is_completed)
+
+  if (isLoading) return <LoadingPage />
+
+  return (
+    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+      <div className="flex justify-end">
+        <Sheet open={showForm} onOpenChange={setShowForm}>
+          <SheetTrigger>
+            <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Task</Button>
+          </SheetTrigger>
+          <SheetContent className="w-full sm:max-w-md">
+            <SheetHeader><SheetTitle>New Task</SheetTitle></SheetHeader>
+            <div className="mt-6 space-y-4">
+              <div className="space-y-2"><Label>Title</Label><Input placeholder="e.g., Pay credit card bill" value={newTask.title} onChange={e => setNewTask(p => ({ ...p, title: e.target.value }))} /></div>
+              <div className="space-y-2"><Label>Description</Label><Textarea rows={2} value={newTask.description} onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <Input type="date" value={newTask.due_date} onChange={e => setNewTask(p => ({ ...p, due_date: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select value={newTask.priority} onValueChange={(v) => setNewTask(p => ({ ...p, priority: v as Priority }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="flex-1">Cancel</Button>
+                <Button onClick={addTask} className="flex-1 gradient-primary border-0">Add Task</Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {tasks.length === 0 ? (
+        <EmptyState icon={ListChecks} title="No tasks" description="Create financial tasks and reminders" action={{ label: 'Add Task', onClick: () => setShowForm(true) }} />
+      ) : (
+        <>
+          {pending.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Pending ({pending.length})</h2>
+              {pending.map((task, i) => (
+                <motion.div key={task.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
+                  <Card className="card-hover">
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <button
+                        onClick={() => toggleTask(task)}
+                        className="w-5 h-5 rounded-full border-2 border-border hover:border-primary transition-colors shrink-0 flex items-center justify-center"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{task.title}</p>
+                        {task.description && <p className="text-xs text-muted-foreground truncate">{task.description}</p>}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[task.priority] }} />
+                          <span className="text-[10px] text-muted-foreground capitalize">{task.priority}</span>
+                          {task.due_date && <span className="text-[10px] text-muted-foreground">Due {formatDate(task.due_date)}</span>}
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-destructive" onClick={() => deleteTask(task.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
+          {done.length > 0 && (
+            <div className="space-y-2 opacity-60">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Completed ({done.length})</h2>
+              {done.map(task => (
+                <Card key={task.id}>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <button onClick={() => toggleTask(task)} className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
+                      <Check className="w-3 h-3 text-white" />
+                    </button>
+                    <p className="text-sm line-through text-muted-foreground flex-1">{task.title}</p>
+                    <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => deleteTask(task.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}

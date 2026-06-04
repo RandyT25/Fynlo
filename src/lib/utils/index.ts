@@ -1,0 +1,39 @@
+export * from './format'
+export * from './colors'
+
+export function cn(...classes: (string | undefined | null | false)[]): string {
+  return classes.filter(Boolean).join(' ')
+}
+
+export function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export function generateId(): string {
+  return crypto.randomUUID()
+}
+
+export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
+  return array.reduce((result, item) => {
+    const group = String(item[key])
+    if (!result[group]) result[group] = []
+    result[group].push(item)
+    return result
+  }, {} as Record<string, T[]>)
+}
+
+export function sortByDate<T extends { date: string }>(array: T[], order: 'asc' | 'desc' = 'desc'): T[] {
+  return [...array].sort((a, b) => {
+    const diff = new Date(a.date).getTime() - new Date(b.date).getTime()
+    return order === 'desc' ? -diff : diff
+  })
+}
+
+export function calculateGrowthRate(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0
+  return ((current - previous) / Math.abs(previous)) * 100
+}
+
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
