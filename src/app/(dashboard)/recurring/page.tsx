@@ -3,5 +3,5 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { RecurringContent } from '@/features/recurring/recurring-content'
 export const metadata: Metadata = { title: 'Recurring' }
 export default function RecurringPage() {
-  return <AppLayout title="Recurring" subtitle="Manage repeating transactions"><RecurringContent /></AppLayout>
+  return <AppLayout title="Recurring"><RecurringContent /></AppLayout>
 }

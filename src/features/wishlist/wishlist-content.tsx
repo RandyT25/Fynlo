@@ -74,13 +74,13 @@ export function WishlistContent() {
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="px-4 pt-4 pb-4 space-y-4">
       <div className="flex justify-end">
         <Sheet open={showForm} onOpenChange={setShowForm}>
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Item</Button>
           </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md">
+          <SheetContent className="h-[90dvh]">
             <SheetHeader><SheetTitle>Add to Wishlist</SheetTitle></SheetHeader>
             <div className="mt-6 space-y-4">
               <div className="space-y-2"><Label>Item Name</Label><Input placeholder="e.g., MacBook Pro" value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} /></div>

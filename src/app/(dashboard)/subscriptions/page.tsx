@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Subscriptions' }
 
 export default function SubscriptionsPage() {
   return (
-    <AppLayout title="Subscriptions" subtitle="Track recurring charges and services">
+    <AppLayout title="Subscriptions">
       <SubscriptionsContent />
     </AppLayout>
   )

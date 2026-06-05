@@ -1,22 +1,18 @@
-import { Sidebar } from './sidebar'
 import { MobileNav } from './mobile-nav'
-import { Header } from './header'
+import { MobileHeader } from './mobile-header'
 
 interface AppLayoutProps {
   children: React.ReactNode
-  title: string
-  subtitle?: string
+  title?: string
+  headerRight?: React.ReactNode
 }
 
-export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
+export function AppLayout({ children, title, headerRight }: AppLayoutProps) {
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header title={title} subtitle={subtitle} />
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
-          {children}
-        </main>
+    <div className="max-w-[430px] mx-auto bg-background min-h-[100dvh]">
+      {title && <MobileHeader title={title} right={headerRight} />}
+      <div style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
+        {children}
       </div>
       <MobileNav />
     </div>

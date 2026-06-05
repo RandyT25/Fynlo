@@ -1,11 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, Check, CheckCheck } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingPage } from '@/components/shared/loading-spinner'
 import { formatDateRelative } from '@/lib/utils/format'
@@ -48,41 +45,33 @@ export function NotificationsContent() {
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="p-6 space-y-4 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">All Notifications</h2>
-          {unreadCount > 0 && <Badge className="gradient-primary border-0">{unreadCount} unread</Badge>}
+    <div className="px-4 pt-4 pb-4">
+      {unreadCount > 0 && (
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm text-muted-foreground">{unreadCount} unread</span>
+          <button className="text-primary text-sm font-medium" onClick={markAllRead}>Mark all read</button>
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" className="gap-2" onClick={markAllRead}>
-            <CheckCheck className="w-4 h-4" /> Mark all read
-          </Button>
-        )}
-      </div>
-
+      )}
       {notifications.length === 0 ? (
         <EmptyState icon={Bell} title="No notifications" description="You're all caught up!" />
       ) : (
-        <div className="space-y-2">
-          {notifications.map(notification => (
-            <Card key={notification.id} className={cn('card-hover', !notification.is_read && 'border-primary/30 bg-primary/5')}>
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${TYPE_COLORS[notification.type] ?? '#6B7280'}20` }}>
-                  <Bell className="w-5 h-5" style={{ color: TYPE_COLORS[notification.type] ?? '#6B7280' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{notification.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{notification.message}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{formatDateRelative(notification.created_at)}</p>
-                </div>
-                {!notification.is_read && (
-                  <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0" onClick={() => markRead(notification.id)}>
-                    <Check className="w-4 h-4" />
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+        <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
+          {notifications.map((n, i) => (
+            <div
+              key={n.id}
+              className={cn('flex items-start gap-3 px-4 py-4 cursor-pointer active:bg-muted/50', i > 0 && 'border-t border-border/40', !n.is_read && 'bg-primary/5')}
+              onClick={() => markRead(n.id)}
+            >
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: `${TYPE_COLORS[n.type] ?? '#6B7280'}20` }}>
+                <Bell className="w-4 h-4" style={{ color: TYPE_COLORS[n.type] ?? '#6B7280' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">{n.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">{formatDateRelative(n.created_at)}</p>
+              </div>
+              {!n.is_read && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />}
+            </div>
           ))}
         </div>
       )}

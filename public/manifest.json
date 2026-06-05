@@ -1,10 +1,10 @@
 {
-  "name": "Fynlo — Smart Money Management",
+  "name": "Fynlo",
   "short_name": "Fynlo",
-  "description": "A modern budgeting and money management platform",
+  "description": "Smart money management in your pocket",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#ffffff",
   "theme_color": "#3B82F6",
   "orientation": "portrait-primary",
   "icons": [
@@ -18,10 +18,9 @@
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
   "shortcuts": [
-    { "name": "Dashboard", "url": "/dashboard", "description": "View your financial overview" },
-    { "name": "Add Transaction", "url": "/transactions?action=new", "description": "Record a new transaction" },
-    { "name": "Accounts", "url": "/accounts", "description": "Manage your accounts" },
-    { "name": "Budgets", "url": "/budgets", "description": "Check your budgets" }
+    { "name": "Home", "url": "/dashboard" },
+    { "name": "Add Transaction", "url": "/transactions" },
+    { "name": "Accounts", "url": "/accounts" }
   ],
   "categories": ["finance", "productivity"]
 }

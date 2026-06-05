@@ -1,18 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Wallet, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react'
+import { Plus, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAccounts } from '@/hooks/use-accounts'
 import { AccountForm } from './account-form'
 import { EmptyState } from '@/components/shared/empty-state'
 import { formatCurrency } from '@/lib/utils/format'
-import { getAccountColor, ACCOUNT_TYPE_COLORS } from '@/lib/utils/colors'
 import { cn } from '@/lib/utils'
 import type { Account, AccountType } from '@/types/database'
 
@@ -21,155 +18,161 @@ const ACCOUNT_ICONS: Record<AccountType, string> = {
   loan: '📋', investment: '📈', crypto: '₿', business: '🏢', custom: '💰',
 }
 
-const ACCOUNT_GROUPS = [
-  { label: 'Cash & Bank', types: ['cash', 'checking', 'savings'] as AccountType[] },
-  { label: 'Credit & Loans', types: ['credit_card', 'loan'] as AccountType[] },
-  { label: 'Investments', types: ['investment', 'crypto'] as AccountType[] },
-  { label: 'Other', types: ['business', 'custom'] as AccountType[] },
-]
-
 export function AccountsContent() {
   const [showForm, setShowForm] = useState(false)
   const [editAccount, setEditAccount] = useState<Account | null>(null)
   const { accounts, isLoading, totalBalance, refetch, deleteAccount } = useAccounts()
 
-  const grouped = ACCOUNT_GROUPS.map(group => ({
-    ...group,
-    accounts: accounts.filter(a => group.types.includes(a.type as AccountType)),
-  })).filter(g => g.accounts.length > 0)
+  const activeAccounts = accounts.filter(a => a.is_active)
 
-  const totalAssets = accounts
-    .filter(a => !['credit_card', 'loan'].includes(a.type))
-    .reduce((s, a) => s + a.balance, 0)
-
-  const totalLiabilities = accounts
-    .filter(a => ['credit_card', 'loan'].includes(a.type))
-    .reduce((s, a) => s + a.balance, 0)
+  const pieData = activeAccounts
+    .filter(a => a.balance !== 0)
+    .map(a => ({
+      name: a.name,
+      value: Math.abs(a.balance),
+      color: a.color ?? '#3B82F6',
+    }))
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="gradient-primary text-white">
-          <CardContent className="p-4">
-            <p className="text-white/70 text-sm mb-1">Net Worth</p>
-            <p className="text-2xl font-bold">{formatCurrency(totalBalance)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-green-500" />
-              <p className="text-sm text-muted-foreground">Total Assets</p>
-            </div>
-            <p className="text-xl font-bold text-green-500">{formatCurrency(totalAssets)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingDown className="w-4 h-4 text-red-500" />
-              <p className="text-sm text-muted-foreground">Total Liabilities</p>
-            </div>
-            <p className="text-xl font-bold text-red-500">{formatCurrency(totalLiabilities)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Add account button */}
-      <div className="flex justify-end">
-        <Sheet open={showForm} onOpenChange={setShowForm}>
-          <SheetTrigger>
-            <Button className="gradient-primary border-0 gap-2">
-              <Plus className="w-4 h-4" /> Add Account
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-            <SheetHeader><SheetTitle>Add Account</SheetTitle></SheetHeader>
-            <div className="mt-6">
-              <AccountForm onSuccess={() => { setShowForm(false); refetch() }} onCancel={() => setShowForm(false)} />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-
-      {/* Account groups */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
-          ))}
-        </div>
-      ) : accounts.length === 0 ? (
-        <EmptyState
-          icon={Wallet}
-          title="No accounts yet"
-          description="Add your first account to start tracking your finances"
-          action={{ label: 'Add Account', onClick: () => setShowForm(true) }}
-        />
-      ) : (
-        grouped.map(group => (
-          <div key={group.label} className="space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {group.accounts.map((account, i) => (
-                <motion.div
-                  key={account.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
+    <div className="flex flex-col min-h-full pb-4">
+      {/* Donut chart + balance */}
+      <div className="flex flex-col items-center pt-4 pb-2 px-4">
+        {isLoading ? (
+          <div className="w-[200px] h-[200px] flex items-center justify-center">
+            <Skeleton className="w-[160px] h-[160px] rounded-full" />
+          </div>
+        ) : pieData.length > 0 ? (
+          <div className="relative w-[200px] h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={62}
+                  outerRadius={90}
+                  dataKey="value"
+                  strokeWidth={2}
+                  stroke="hsl(var(--background))"
                 >
-                  <Card className="card-hover">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-                            style={{ backgroundColor: `${account.color}20` }}
-                          >
-                            {ACCOUNT_ICONS[account.type as AccountType] ?? '💰'}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">{account.name}</p>
-                            <Badge variant="secondary" className="text-[10px] mt-0.5 capitalize">
-                              {account.type.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground" onClick={() => setEditAccount(account)}>✎</Button>
-                          <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-destructive" onClick={() => deleteAccount(account.id)}>✕</Button>
-                        </div>
-                      </div>
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Balance</p>
-                          <p className="text-xl font-bold" style={{ color: getAccountColor(account.type as AccountType) }}>
-                            {formatCurrency(account.balance, account.currency)}
-                          </p>
-                        </div>
-                        {account.institution && (
-                          <p className="text-xs text-muted-foreground">{account.institution}</p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                  {pieData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <p className="text-[11px] text-muted-foreground">Account Balance</p>
+              <p className="text-xl font-bold">{formatCurrency(totalBalance)}</p>
+              <p className="text-[11px] text-muted-foreground">USD</p>
             </div>
           </div>
-        ))
-      )}
+        ) : (
+          <div className="w-[200px] h-[200px] rounded-full bg-muted flex items-center justify-center">
+            <p className="text-muted-foreground text-sm">No accounts</p>
+          </div>
+        )}
+      </div>
+
+      {/* Accounts list */}
+      <div className="px-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">My Accounts</h2>
+          <button
+            className="flex items-center gap-1 text-primary text-sm font-medium"
+            onClick={() => setShowForm(true)}
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Account
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-muted/50">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <div className="flex-1"><Skeleton className="h-4 w-28 mb-1" /><Skeleton className="h-3 w-16" /></div>
+                <Skeleton className="h-5 w-20" />
+              </div>
+            ))}
+          </div>
+        ) : activeAccounts.length === 0 ? (
+          <EmptyState
+            icon={Plus}
+            title="No accounts yet"
+            description="Add your first account to start tracking"
+            action={{ label: 'Add Account', onClick: () => setShowForm(true) }}
+          />
+        ) : (
+          <div className="space-y-2">
+            {activeAccounts.map((account, i) => {
+              const icon = ACCOUNT_ICONS[account.type as AccountType] ?? '💰'
+              const isLiability = account.type === 'credit_card' || account.type === 'loan'
+              return (
+                <motion.div
+                  key={account.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-muted/40 active:bg-muted transition-colors cursor-pointer"
+                  onClick={() => setEditAccount(account)}
+                >
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0"
+                    style={{ backgroundColor: account.color ?? '#3B82F6' }}
+                  >
+                    <span className="text-white text-sm font-bold">
+                      {account.name[0].toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{account.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{account.type.replace('_', ' ')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={cn('font-semibold text-sm', isLiability ? 'text-destructive' : 'text-foreground')}>
+                      {formatCurrency(account.balance, account.currency)}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Add sheet */}
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
+          <SheetHeader className="pb-2">
+            <SheetTitle>Add Account</SheetTitle>
+          </SheetHeader>
+          <AccountForm onSuccess={() => { setShowForm(false); refetch() }} onCancel={() => setShowForm(false)} />
+        </SheetContent>
+      </Sheet>
 
       {/* Edit sheet */}
       <Sheet open={!!editAccount} onOpenChange={open => !open && setEditAccount(null)}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>Edit Account</SheetTitle></SheetHeader>
-          <div className="mt-6">
-            {editAccount && (
-              <AccountForm account={editAccount} onSuccess={() => { setEditAccount(null); refetch() }} onCancel={() => setEditAccount(null)} />
-            )}
-          </div>
+        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
+          <SheetHeader className="pb-2">
+            <SheetTitle>Edit Account</SheetTitle>
+          </SheetHeader>
+          {editAccount && (
+            <div className="pb-4">
+              <AccountForm
+                account={editAccount}
+                onSuccess={() => { setEditAccount(null); refetch() }}
+                onCancel={() => setEditAccount(null)}
+              />
+              <button
+                className="w-full mt-3 py-3 text-destructive text-sm font-medium"
+                onClick={() => { deleteAccount(editAccount.id); setEditAccount(null) }}
+              >
+                Delete Account
+              </button>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </div>

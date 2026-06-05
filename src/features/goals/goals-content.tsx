@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Target, Trophy, TrendingUp } from 'lucide-react'
+import { Plus, Target } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -12,15 +11,12 @@ import { goalSchema, type GoalInput } from '@/lib/validations/goal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingPage } from '@/components/shared/loading-spinner'
-import { formatCurrency, formatPercent, formatDate } from '@/lib/utils/format'
+import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 import type { Goal } from '@/types/database'
 
@@ -58,143 +54,107 @@ export function GoalsContent() {
   const active = goals.filter(g => !g.is_completed)
   const completed = goals.filter(g => g.is_completed)
 
+  const [showCompleted, setShowCompleted] = useState(false)
+
+  const totalSaved = active.reduce((s, g) => s + g.current_amount, 0)
+  const displayGoals = showCompleted ? goals : active
+
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Summary */}
+    <div className="px-4 pt-4 pb-4">
+      {/* Summary row */}
       {goals.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="gradient-primary text-white">
-            <CardContent className="p-4">
-              <p className="text-white/70 text-sm">Active Goals</p>
-              <p className="text-2xl font-bold">{active.length}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Saved So Far</p>
-              <p className="text-xl font-bold text-green-500">{formatCurrency(active.reduce((s, g) => s + g.current_amount, 0))}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Total Target</p>
-              <p className="text-xl font-bold">{formatCurrency(active.reduce((s, g) => s + g.target_amount, 0))}</p>
-            </CardContent>
-          </Card>
+        <div className="flex gap-3 mb-4">
+          <div className="flex-1 bg-card rounded-2xl p-4 shadow-sm border border-border/50">
+            <p className="text-xs text-muted-foreground mb-1">Total Saved</p>
+            <p className="text-xl font-bold">{formatCurrency(totalSaved)}</p>
+          </div>
+          <div className="flex-1 bg-card rounded-2xl p-4 shadow-sm border border-border/50">
+            <p className="text-xs text-muted-foreground mb-1">Fulfilled</p>
+            <p className="text-xl font-bold">{completed.length}<span className="text-muted-foreground font-normal text-sm">/{goals.length}</span></p>
+          </div>
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Sheet open={showForm} onOpenChange={open => { setShowForm(open); if (!open) setEditGoal(null) }}>
-          <SheetTrigger>
-            <Button className="gradient-primary border-0 gap-2">
-              <Plus className="w-4 h-4" /> Add Goal
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-            <SheetHeader><SheetTitle>{editGoal ? 'Edit' : 'New'} Goal</SheetTitle></SheetHeader>
-            <div className="mt-6">
-              <GoalForm
-                goal={editGoal ?? undefined}
-                onSuccess={() => { setShowForm(false); setEditGoal(null); fetchGoals() }}
-                onCancel={() => { setShowForm(false); setEditGoal(null) }}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
+      {/* Toggle completed */}
+      {completed.length > 0 && (
+        <div className="flex items-center justify-between mb-4 px-1">
+          <span className="text-sm text-muted-foreground">Show fulfilled goals</span>
+          <button
+            className={cn('w-11 h-6 rounded-full transition-colors relative', showCompleted ? 'bg-primary' : 'bg-muted')}
+            onClick={() => setShowCompleted(v => !v)}
+          >
+            <div className={cn('w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm', showCompleted ? 'translate-x-5' : 'translate-x-0.5')} />
+          </button>
+        </div>
+      )}
 
       {goals.length === 0 ? (
         <EmptyState icon={Target} title="No goals yet" description="Set financial goals and track your progress" action={{ label: 'Create Goal', onClick: () => setShowForm(true) }} />
       ) : (
-        <>
-          {active.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Active Goals</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {active.map((goal, i) => (
-                  <GoalCard key={goal.id} goal={goal} index={i} onEdit={() => { setEditGoal(goal); setShowForm(true) }} onDelete={() => deleteGoal(goal.id)} onToggle={() => toggleComplete(goal)} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {completed.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-yellow-500" /> Completed Goals
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 opacity-70">
-                {completed.map((goal, i) => (
-                  <GoalCard key={goal.id} goal={goal} index={i} onEdit={() => { setEditGoal(goal); setShowForm(true) }} onDelete={() => deleteGoal(goal.id)} onToggle={() => toggleComplete(goal)} />
-                ))}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
-interface GoalCardProps {
-  goal: Goal
-  index: number
-  onEdit: () => void
-  onDelete: () => void
-  onToggle: () => void
-}
-
-function GoalCard({ goal, index, onEdit, onDelete, onToggle }: GoalCardProps) {
-  const progress = Math.min((goal.current_amount / goal.target_amount) * 100, 100)
-  const remaining = goal.target_amount - goal.current_amount
-
-  return (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }}>
-      <Card className={cn('card-hover overflow-hidden', goal.is_completed && 'opacity-80')}>
-        <div className="h-1" style={{ backgroundColor: goal.color }} />
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ backgroundColor: `${goal.color}20` }}>
-                🎯
-              </div>
-              <div>
-                <p className="font-semibold">{goal.name}</p>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-[10px] capitalize">{goal.type}</Badge>
-                  {goal.is_completed && <Badge className="text-[10px] bg-green-500">Completed</Badge>}
-                  {goal.target_date && (
-                    <span className="text-[10px] text-muted-foreground">Due {formatDate(goal.target_date)}</span>
-                  )}
+        <div className="space-y-3">
+          {displayGoals.map((goal, i) => (
+            <motion.div
+              key={goal.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className={cn('bg-card rounded-3xl p-4 shadow-sm border border-border/50 cursor-pointer active:scale-[0.99] transition-transform', goal.is_completed && 'opacity-70')}
+              onClick={() => { setEditGoal(goal); setShowForm(true) }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: `${goal.color}22` }}>
+                    🎯
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">{goal.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{goal.type}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-sm">{formatCurrency(goal.target_amount)}</p>
                 </div>
               </div>
-            </div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon" className="w-7 h-7" onClick={onToggle} title={goal.is_completed ? 'Reopen' : 'Mark complete'}>
-                {goal.is_completed ? '↩' : '✓'}
-              </Button>
-              <Button variant="ghost" size="icon" className="w-7 h-7" onClick={onEdit}>✎</Button>
-              <Button variant="ghost" size="icon" className="w-7 h-7 hover:text-destructive" onClick={onDelete}>✕</Button>
-            </div>
-          </div>
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="font-semibold" style={{ color: goal.color }}>{formatCurrency(goal.current_amount)}</span>
+                <span className="text-muted-foreground text-xs">{formatCurrency(goal.target_amount)}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.min((goal.current_amount / goal.target_amount) * 100, 100)}%`,
+                    backgroundColor: goal.color,
+                  }}
+                />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-semibold" style={{ color: goal.color }}>{formatCurrency(goal.current_amount)}</span>
-              <span className="text-muted-foreground">/ {formatCurrency(goal.target_amount)}</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{formatPercent(progress, 0)} reached</span>
-              <span>{formatCurrency(remaining)} to go</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+      {/* FAB */}
+      <button
+        className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
+        onClick={() => { setEditGoal(null); setShowForm(true) }}
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      <Sheet open={showForm} onOpenChange={open => { setShowForm(open); if (!open) setEditGoal(null) }}>
+        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
+          <SheetHeader className="pb-2"><SheetTitle>{editGoal ? 'Edit' : 'New'} Goal</SheetTitle></SheetHeader>
+          <GoalForm
+            goal={editGoal ?? undefined}
+            onSuccess={() => { setShowForm(false); setEditGoal(null); fetchGoals() }}
+            onCancel={() => { setShowForm(false); setEditGoal(null) }}
+          />
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 }
 

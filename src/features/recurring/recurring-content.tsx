@@ -60,13 +60,13 @@ export function RecurringContent() {
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="px-4 pt-4 pb-4 space-y-4">
       <div className="flex justify-end">
         <Sheet open={showForm} onOpenChange={setShowForm}>
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Recurring</Button>
           </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <SheetContent className="w-full overflow-y-auto rounded-t-3xl">
             <SheetHeader><SheetTitle>Add Recurring Transaction</SheetTitle></SheetHeader>
             <div className="mt-6">
               <RecurringForm onSuccess={() => { setShowForm(false); fetchRecurrings() }} onCancel={() => setShowForm(false)} />

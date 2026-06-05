@@ -69,13 +69,13 @@ export function TasksContent() {
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+    <div className="px-4 pt-4 pb-4 space-y-4">
       <div className="flex justify-end">
         <Sheet open={showForm} onOpenChange={setShowForm}>
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Task</Button>
           </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md">
+          <SheetContent className="h-[90dvh]">
             <SheetHeader><SheetTitle>New Task</SheetTitle></SheetHeader>
             <div className="mt-6 space-y-4">
               <div className="space-y-2"><Label>Title</Label><Input placeholder="e.g., Pay credit card bill" value={newTask.title} onChange={e => setNewTask(p => ({ ...p, title: e.target.value }))} /></div>

@@ -71,9 +71,7 @@ export default function LoginPage() {
     return (
       <Card className="glass-card">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 rounded-2xl gradient-primary mx-auto flex items-center justify-center mb-4">
-            <Mail className="w-8 h-8 text-white" />
-          </div>
+          <img src="/fynlo-icon-color.png" alt="Fynlo" className="w-16 h-16 mx-auto mb-4 rounded-2xl" />
           <CardTitle>Check your email</CardTitle>
           <CardDescription>We sent a magic link to {getValues('email')}</CardDescription>
         </CardHeader>
@@ -88,9 +86,7 @@ export default function LoginPage() {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <Card className="glass-card">
         <CardHeader className="text-center pb-2">
-          <div className="w-16 h-16 rounded-2xl gradient-primary mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
-            <span className="text-white font-bold text-2xl">F</span>
-          </div>
+          <img src="/fynlo-icon-color.png" alt="Fynlo" className="w-16 h-16 mx-auto mb-2 rounded-2xl shadow-lg" />
           <CardTitle className="text-2xl">Welcome back</CardTitle>
           <CardDescription>Sign in to your Fynlo account</CardDescription>
         </CardHeader>

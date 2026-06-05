@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Goals' }
 
 export default function GoalsPage() {
   return (
-    <AppLayout title="Goals" subtitle="Reach your financial milestones">
+    <AppLayout title="Goals">
       <GoalsContent />
     </AppLayout>
   )

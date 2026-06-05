@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Analytics' }
 
 export default function AnalyticsPage() {
   return (
-    <AppLayout title="Analytics" subtitle="Deep insights into your finances">
+    <AppLayout title="Analytics">
       <AnalyticsContent />
     </AppLayout>
   )

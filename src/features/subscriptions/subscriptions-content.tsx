@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, CreditCard, Calendar, AlertCircle, TrendingDown } from 'lucide-react'
+import { Plus, CreditCard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format, differenceInDays, parseISO } from 'date-fns'
 import { toast } from 'sonner'
@@ -12,7 +12,6 @@ import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -67,90 +66,79 @@ export function SubscriptionsContent() {
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="gradient-primary text-white">
-          <CardContent className="p-4">
-            <p className="text-white/70 text-sm">Monthly Cost</p>
-            <p className="text-2xl font-bold">{formatCurrency(monthlyTotal)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Yearly Cost</p>
-            <p className="text-xl font-bold text-red-500">{formatCurrency(monthlyTotal * 12)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Active Subs</p>
-            <p className="text-xl font-bold">{active.length}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex justify-end">
-        <Sheet open={showForm} onOpenChange={open => { setShowForm(open); if (!open) setEditSub(null) }}>
-          <SheetTrigger>
-            <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Subscription</Button>
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-            <SheetHeader><SheetTitle>{editSub ? 'Edit' : 'Add'} Subscription</SheetTitle></SheetHeader>
-            <div className="mt-6">
-              <SubscriptionForm
-                sub={editSub ?? undefined}
-                onSuccess={() => { setShowForm(false); setEditSub(null); fetchSubs() }}
-                onCancel={() => { setShowForm(false); setEditSub(null) }}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
+    <div className="px-4 pt-4 pb-4">
+      {/* Summary */}
+      <div className="flex gap-3 mb-5">
+        <div className="flex-1 gradient-primary rounded-2xl p-4 text-white">
+          <p className="text-white/70 text-xs mb-1">Monthly Cost</p>
+          <p className="text-2xl font-bold">{formatCurrency(monthlyTotal)}</p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
+            <p className="text-[11px] text-muted-foreground">Yearly</p>
+            <p className="font-bold text-sm text-destructive">{formatCurrency(monthlyTotal * 12)}</p>
+          </div>
+          <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
+            <p className="text-[11px] text-muted-foreground">Active</p>
+            <p className="font-bold text-sm">{active.length}</p>
+          </div>
+        </div>
       </div>
 
       {subscriptions.length === 0 ? (
         <EmptyState icon={CreditCard} title="No subscriptions" description="Track your recurring charges and services" action={{ label: 'Add Subscription', onClick: () => setShowForm(true) }} />
       ) : (
-        <div className="space-y-2">
+        <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
           {subscriptions.map((sub, i) => {
             const daysLeft = differenceInDays(parseISO(sub.next_billing_date), new Date())
             const isUrgent = daysLeft <= 3 && sub.status === 'active'
-
             return (
-              <motion.div key={sub.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                <Card className={cn('card-hover', isUrgent && 'border-orange-300 dark:border-orange-800')}>
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center text-2xl shrink-0">
-                      {sub.logo_url ? <img src={sub.logo_url} alt="" className="w-8 h-8 rounded" /> : '📦'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold">{sub.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Badge variant={sub.status === 'active' ? 'default' : 'secondary'} className={cn('text-[10px]', sub.status === 'active' && 'bg-green-500')}>
-                          {sub.status}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] capitalize">{sub.billing_cycle}</Badge>
-                        {isUrgent && (
-                          <span className="text-[10px] text-orange-500 flex items-center gap-0.5">
-                            <AlertCircle className="w-3 h-3" /> Due in {daysLeft}d
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">{formatCurrency(sub.amount, sub.currency)}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(sub.next_billing_date)}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => { setEditSub(sub); setShowForm(true) }}>✎</Button>
-                      <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-destructive" onClick={() => handleDelete(sub.id)}>✕</Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              <motion.div
+                key={sub.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.03 }}
+                className={cn('flex items-center gap-3 px-4 py-3.5 active:bg-muted/50 cursor-pointer', i > 0 && 'border-t border-border/40')}
+                onClick={() => { setEditSub(sub); setShowForm(true) }}
+              >
+                <div className="w-11 h-11 rounded-2xl bg-muted flex items-center justify-center text-xl shrink-0">
+                  {sub.logo_url ? <img src={sub.logo_url} alt="" className="w-7 h-7 rounded-lg" /> : '📦'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{sub.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {sub.billing_cycle}{isUrgent ? ` · Due in ${daysLeft}d` : ''}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-bold text-sm text-destructive">-{formatCurrency(sub.amount, sub.currency)}</p>
+                  <p className="text-[11px] text-muted-foreground">{formatDate(sub.next_billing_date)}</p>
+                </div>
               </motion.div>
             )
           })}
         </div>
       )}
+
+      {/* FAB */}
+      <button
+        className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
+        onClick={() => { setEditSub(null); setShowForm(true) }}
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      <Sheet open={showForm} onOpenChange={open => { setShowForm(open); if (!open) setEditSub(null) }}>
+        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
+          <SheetHeader className="pb-2"><SheetTitle>{editSub ? 'Edit' : 'Add'} Subscription</SheetTitle></SheetHeader>
+          <SubscriptionForm
+            sub={editSub ?? undefined}
+            onSuccess={() => { setShowForm(false); setEditSub(null); fetchSubs() }}
+            onCancel={() => { setShowForm(false); setEditSub(null) }}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

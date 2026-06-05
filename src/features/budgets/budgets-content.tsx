@@ -78,132 +78,101 @@ export function BudgetsContent() {
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="gradient-primary text-white">
-          <CardContent className="p-4">
-            <p className="text-white/70 text-sm">Total Budgeted</p>
-            <p className="text-xl font-bold">{formatCurrency(totalBudgeted)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Spent</p>
-            <p className="text-xl font-bold text-red-500">{formatCurrency(totalSpent)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Remaining</p>
-            <p className={cn('text-xl font-bold', totalBudgeted - totalSpent >= 0 ? 'text-green-500' : 'text-red-500')}>
+    <div className="px-4 pt-4 pb-4">
+      {/* Summary */}
+      <div className="flex gap-3 mb-5">
+        <div className="flex-1 gradient-primary rounded-2xl p-4 text-white">
+          <p className="text-white/70 text-xs mb-1">Budgeted</p>
+          <p className="text-2xl font-bold">{formatCurrency(totalBudgeted)}</p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
+            <p className="text-[11px] text-muted-foreground">Spent</p>
+            <p className="font-bold text-sm text-destructive">{formatCurrency(totalSpent)}</p>
+          </div>
+          <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
+            <p className="text-[11px] text-muted-foreground">Left</p>
+            <p className={cn('font-bold text-sm', totalBudgeted - totalSpent >= 0 ? 'text-green-500' : 'text-destructive')}>
               {formatCurrency(Math.abs(totalBudgeted - totalSpent))}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {overBudget.length > 0 && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
-          <p className="text-sm text-destructive">
-            You have <strong>{overBudget.length}</strong> budget{overBudget.length > 1 ? 's' : ''} over limit
-          </p>
+        <div className="flex items-center gap-3 bg-red-50 dark:bg-red-500/10 rounded-2xl px-4 py-3 mb-4">
+          <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+          <p className="text-sm text-destructive font-medium">{overBudget.length} budget{overBudget.length > 1 ? 's' : ''} over limit</p>
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Sheet open={showForm} onOpenChange={setShowForm}>
-          <SheetTrigger>
-            <Button className="gradient-primary border-0 gap-2">
-              <Plus className="w-4 h-4" /> Add Budget
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-            <SheetHeader><SheetTitle>{editBudget ? 'Edit' : 'Add'} Budget</SheetTitle></SheetHeader>
-            <div className="mt-6">
-              <BudgetForm
-                budget={editBudget ?? undefined}
-                categories={categories}
-                onSuccess={() => { setShowForm(false); setEditBudget(null); fetchData() }}
-                onCancel={() => { setShowForm(false); setEditBudget(null) }}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-
       {budgets.length === 0 ? (
-        <EmptyState
-          icon={PiggyBank}
-          title="No budgets yet"
-          description="Create budgets to track and control your spending"
-          action={{ label: 'Create Budget', onClick: () => setShowForm(true) }}
-        />
+        <EmptyState icon={PiggyBank} title="No budgets yet" description="Create budgets to track your spending" action={{ label: 'Create Budget', onClick: () => setShowForm(true) }} />
       ) : (
         <div className="space-y-3">
           {budgets.map((budget, i) => {
             const isOver = budget.spent > budget.amount
             const isWarning = budget.utilization >= 80 && !isOver
             const remaining = budget.amount - budget.spent
+            const barColor = isOver ? '#EF4444' : isWarning ? '#F59E0B' : '#22C55E'
 
             return (
-              <motion.div
-                key={budget.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <Card className={cn('card-hover', isOver && 'border-destructive/50')}>
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center',
-                          isOver ? 'bg-red-100 dark:bg-red-950/30' : isWarning ? 'bg-yellow-100 dark:bg-yellow-950/30' : 'bg-green-100 dark:bg-green-950/30'
-                        )}>
-                          {isOver ? (
-                            <AlertCircle className="w-5 h-5 text-destructive" />
-                          ) : (
-                            <CheckCircle2 className={cn('w-5 h-5', isWarning ? 'text-yellow-500' : 'text-green-500')} />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-semibold">{budget.category?.name ?? budget.name}</p>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-[10px] capitalize">{budget.period}</Badge>
-                            {isOver && <Badge variant="destructive" className="text-[10px]">Over budget</Badge>}
-                            {isWarning && <Badge className="text-[10px] bg-yellow-500">Warning</Badge>}
-                          </div>
-                        </div>
+              <motion.div key={budget.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                <div
+                  className="bg-card rounded-3xl p-4 shadow-sm border border-border/50 active:scale-[0.99] transition-transform cursor-pointer"
+                  onClick={() => { setEditBudget(budget); setShowForm(true) }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${barColor}22` }}>
+                        {isOver ? <AlertCircle className="w-5 h-5 text-destructive" /> : <CheckCircle2 className="w-5 h-5" style={{ color: barColor }} />}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <p className="text-sm font-bold">{formatCurrency(budget.spent)} <span className="font-normal text-muted-foreground">/ {formatCurrency(budget.amount)}</span></p>
-                          <p className={cn('text-xs', remaining >= 0 ? 'text-green-500' : 'text-red-500')}>
-                            {remaining >= 0 ? `${formatCurrency(remaining)} left` : `${formatCurrency(Math.abs(remaining))} over`}
-                          </p>
-                        </div>
-                        <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => { setEditBudget(budget); setShowForm(true) }}>✎</Button>
+                      <div>
+                        <p className="font-semibold text-sm">{budget.category?.name ?? budget.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{budget.period}</p>
                       </div>
                     </div>
-                    <Progress
-                      value={Math.min(budget.utilization, 100)}
-                      className="h-3"
-                      style={{
-                        '--progress-background': isOver ? '#EF4444' : isWarning ? '#F59E0B' : '#22C55E'
-                      } as React.CSSProperties}
-                    />
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-muted-foreground">{formatPercent(Math.min(budget.utilization, 100), 0)} used</span>
-                      <span className="text-xs text-muted-foreground">{formatPercent(Math.max(100 - budget.utilization, 0), 0)} remaining</span>
+                    <div className="text-right">
+                      <p className="font-bold text-sm">{formatCurrency(budget.spent)}</p>
+                      <p className="text-xs text-muted-foreground">/ {formatCurrency(budget.amount)}</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(budget.utilization, 100)}%`, backgroundColor: barColor }} />
+                  </div>
+                  <div className="flex justify-between mt-1.5">
+                    <span className="text-[11px] text-muted-foreground">{Math.round(Math.min(budget.utilization, 100))}% used</span>
+                    <span className={cn('text-[11px] font-medium', remaining >= 0 ? 'text-green-500' : 'text-destructive')}>
+                      {remaining >= 0 ? `${formatCurrency(remaining)} left` : `${formatCurrency(Math.abs(remaining))} over`}
+                    </span>
+                  </div>
+                </div>
               </motion.div>
             )
           })}
         </div>
       )}
+
+      {/* FAB */}
+      <button
+        className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
+        onClick={() => { setEditBudget(null); setShowForm(true) }}
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
+          <SheetHeader className="pb-2"><SheetTitle>{editBudget ? 'Edit' : 'Add'} Budget</SheetTitle></SheetHeader>
+          <BudgetForm
+            budget={editBudget ?? undefined}
+            categories={categories}
+            onSuccess={() => { setShowForm(false); setEditBudget(null); fetchData() }}
+            onCancel={() => { setShowForm(false); setEditBudget(null) }}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

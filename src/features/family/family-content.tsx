@@ -78,7 +78,7 @@ export function FamilyContent() {
           action={{ label: 'Create Family', onClick: () => setShowCreate(true) }}
         />
         <Sheet open={showCreate} onOpenChange={setShowCreate}>
-          <SheetContent className="w-full sm:max-w-md">
+          <SheetContent className="h-[90dvh]">
             <SheetHeader><SheetTitle>Create Family Group</SheetTitle></SheetHeader>
             <div className="mt-6 space-y-4">
               <div className="space-y-2"><Label>Family Name</Label><Input placeholder="e.g., The Smiths" value={familyName} onChange={e => setFamilyName(e.target.value)} /></div>
@@ -94,7 +94,7 @@ export function FamilyContent() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+    <div className="px-4 pt-4 pb-4 space-y-4">
       <Card className="gradient-primary text-white">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
@@ -114,7 +114,7 @@ export function FamilyContent() {
             <SheetTrigger>
               <Button size="sm" className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Invite</Button>
             </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md">
+            <SheetContent className="h-[90dvh]">
               <SheetHeader><SheetTitle>Invite Member</SheetTitle></SheetHeader>
               <div className="mt-6 space-y-4">
                 <div className="space-y-2"><Label>Email Address</Label><Input type="email" placeholder="partner@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} /></div>

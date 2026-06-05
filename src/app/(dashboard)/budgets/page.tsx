@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Budgets' }
 
 export default function BudgetsPage() {
   return (
-    <AppLayout title="Budgets" subtitle="Control your spending with smart budgets">
+    <AppLayout title="Budgets">
       <BudgetsContent />
     </AppLayout>
   )

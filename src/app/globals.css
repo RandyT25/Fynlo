@@ -123,14 +123,17 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-muted text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overscroll-behavior: none;
   }
   html {
     @apply font-sans;
     scroll-behavior: smooth;
+    overscroll-behavior: none;
   }
 }
 

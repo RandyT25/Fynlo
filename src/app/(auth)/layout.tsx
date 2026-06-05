@@ -5,7 +5,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="absolute top-1/4 -left-32 w-96 h-96 rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute bottom-1/4 -right-32 w-96 h-96 rounded-full bg-purple-500/10 blur-3xl" />
       </div>
-      <div className="w-full max-w-md relative">{children}</div>
+      <div className="w-full max-w-md relative">
+        <div className="flex justify-center mb-6">
+          <img src="/fynlo-logo-full.png" alt="Fynlo" className="h-8 brightness-0 invert" />
+        </div>
+        {children}
+      </div>
     </div>
   )
 }

@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Settings' }
 
 export default function SettingsPage() {
   return (
-    <AppLayout title="Settings" subtitle="Manage your account preferences">
+    <AppLayout title="Settings">
       <SettingsContent />
     </AppLayout>
   )

@@ -1,170 +1,144 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Sun, Moon, Monitor, LogOut, ChevronRight, User, DollarSign, Bell, Palette, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { useAuth } from '@/hooks/use-auth'
-import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
 import { useTheme } from 'next-themes'
-import { Sun, Moon, Monitor, LogOut, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'IDR', 'SGD', 'JPY']
-const TIMEZONES = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney']
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'SGD', 'JPY']
+
+function SettingsRow({ label, value, onPress, right }: { label: string; value?: string; onPress?: () => void; right?: React.ReactNode }) {
+  return (
+    <button className="flex items-center px-4 py-4 w-full text-left border-t border-border/40 first:border-0 active:bg-muted/50 transition-colors" onClick={onPress}>
+      <span className="flex-1 text-sm font-medium">{label}</span>
+      {value && <span className="text-sm text-muted-foreground mr-2">{value}</span>}
+      {right}
+      {onPress && !right && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+    </button>
+  )
+}
 
 export function SettingsContent() {
   const { user, profile, signOut } = useAuth()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
+  const [showProfile, setShowProfile] = useState(false)
+  const [name, setName] = useState(profile?.full_name ?? '')
   const [isSaving, setIsSaving] = useState(false)
-
-  const { register, handleSubmit } = useForm({
-    defaultValues: {
-      full_name: profile?.full_name ?? '',
-      currency: profile?.currency ?? 'USD',
-      timezone: profile?.timezone ?? 'UTC',
-      notifications_enabled: profile?.notifications_enabled ?? true,
-    }
-  })
-
-  const onSubmit = async (data: any) => {
-    setIsSaving(true)
-    const { error } = await supabase.from('profiles').update(data).eq('id', user!.id)
-    if (error) toast.error(error.message)
-    else toast.success('Settings saved')
-    setIsSaving(false)
-  }
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'U'
+    : profile?.email?.[0]?.toUpperCase() ?? 'U'
+
+  const saveProfile = async () => {
+    setIsSaving(true)
+    const { error } = await supabase.from('profiles').update({ full_name: name }).eq('id', user!.id)
+    if (error) toast.error(error.message)
+    else { toast.success('Saved'); setShowProfile(false) }
+    setIsSaving(false)
+  }
+
+  const themeLabel = theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'System'
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
-      {/* Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Manage your personal information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="w-16 h-16">
-              <AvatarImage src={profile?.avatar_url ?? undefined} />
-              <AvatarFallback className="gradient-primary text-white text-xl font-bold">{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-semibold">{profile?.full_name ?? 'User'}</p>
-              <p className="text-sm text-muted-foreground">{user?.email}</p>
-              <Badge variant="outline" className="text-xs mt-1">Free Plan</Badge>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Full Name</Label>
-              <Input {...register('full_name')} placeholder="Your name" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Default Currency</Label>
-                <Select defaultValue={profile?.currency ?? 'USD'} onValueChange={(v) => {}}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Timezone</Label>
-                <Select defaultValue={profile?.timezone ?? 'UTC'} onValueChange={(v) => {}}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <Button type="submit" className="gradient-primary border-0" disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="px-4 pt-4 pb-4 space-y-5">
+      {/* Profile card */}
+      <div
+        className="flex items-center gap-4 p-4 bg-card rounded-3xl shadow-sm border border-border/50 active:bg-muted/50 cursor-pointer"
+        onClick={() => setShowProfile(true)}
+      >
+        <Avatar className="w-14 h-14 shrink-0">
+          <AvatarImage src={profile?.avatar_url ?? undefined} />
+          <AvatarFallback className="gradient-primary text-white text-lg font-bold">{initials}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold truncate">{profile?.full_name ?? 'Your Name'}</p>
+          <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+      </div>
 
       {/* Appearance */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-          <CardDescription>Choose your preferred theme</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { value: 'light', label: 'Light', icon: Sun },
-              { value: 'dark', label: 'Dark', icon: Moon },
-              { value: 'system', label: 'System', icon: Monitor },
-            ].map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setTheme(value)}
-                className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${theme === value ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-              >
-                <Icon className={`w-5 h-5 ${theme === value ? 'text-primary' : 'text-muted-foreground'}`} />
-                <span className={`text-sm font-medium ${theme === value ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>
-              </button>
-            ))}
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Appearance</p>
+        <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
+          <div className="flex items-center px-4 py-4">
+            <Palette className="w-5 h-5 text-muted-foreground mr-3" />
+            <span className="flex-1 text-sm font-medium">Theme</span>
+            <div className="flex gap-1.5">
+              {(['light', 'dark', 'system'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTheme(t)}
+                  className={cn('px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all', theme === t ? 'gradient-primary text-white' : 'bg-muted text-muted-foreground')}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notifications</CardTitle>
-          <CardDescription>Control how you receive alerts</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Notifications</p>
+        <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
           {[
-            { label: 'Push Notifications', desc: 'Get notified on your device' },
-            { label: 'Email Notifications', desc: 'Receive alerts via email' },
-            { label: 'Bill Reminders', desc: 'Alerts for upcoming bills' },
-            { label: 'Budget Alerts', desc: 'Notify when budget exceeded' },
-            { label: 'Goal Milestones', desc: 'Celebrate goal progress' },
-          ].map(item => (
-            <div key={item.label} className="flex items-center justify-between">
-              <div>
+            { label: 'Bill Reminders', desc: 'Upcoming bills' },
+            { label: 'Budget Alerts', desc: 'When limit exceeded' },
+            { label: 'Goal Progress', desc: 'Milestone updates' },
+          ].map((item, i) => (
+            <div key={i} className={cn('flex items-center px-4 py-4', i > 0 && 'border-t border-border/40')}>
+              <div className="flex-1">
                 <p className="text-sm font-medium">{item.label}</p>
                 <p className="text-xs text-muted-foreground">{item.desc}</p>
               </div>
               <Switch defaultChecked />
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Account */}
-      <Card className="border-destructive/30">
-        <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button variant="outline" className="w-full gap-2" onClick={signOut}>
-            <LogOut className="w-4 h-4" /> Sign Out
-          </Button>
-          <Button variant="destructive" className="w-full gap-2" onClick={() => toast.error('Account deletion requires contacting support')}>
-            <Trash2 className="w-4 h-4" /> Delete Account
-          </Button>
-        </CardContent>
-      </Card>
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Account</p>
+        <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
+          <button
+            className="flex items-center px-4 py-4 w-full text-left active:bg-muted/50"
+            onClick={signOut}
+          >
+            <LogOut className="w-5 h-5 text-destructive mr-3" />
+            <span className="text-sm font-medium text-destructive">Sign Out</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Edit Profile Sheet */}
+      <Sheet open={showProfile} onOpenChange={setShowProfile}>
+        <SheetContent side="bottom" className="h-auto rounded-t-3xl pb-8">
+          <SheetHeader className="pb-4"><SheetTitle>Edit Profile</SheetTitle></SheetHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className="rounded-2xl" />
+            </div>
+            <Button className="w-full gradient-primary border-0 rounded-2xl" onClick={saveProfile} disabled={isSaving}>
+              {isSaving ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
