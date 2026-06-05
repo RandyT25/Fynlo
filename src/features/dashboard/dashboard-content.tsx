@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useDashboard } from '@/hooks/use-dashboard'
 import { useAuth } from '@/hooks/use-auth'
+import { useCurrency } from '@/hooks/use-currency'
 import { TransactionForm } from '@/features/transactions/transaction-form'
 import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ function dateLabel(date: string) {
 export function DashboardContent() {
   const { data, isLoading, refetch } = useDashboard()
   const { profile } = useAuth()
+  const currency = useCurrency()
   const [showAdd, setShowAdd] = useState(false)
 
   const initials = profile?.full_name
@@ -65,11 +67,11 @@ export function DashboardContent() {
         <div className="flex items-center justify-between mb-1">
           <span className="text-white/70 text-xs font-medium">{format(new Date(), 'MMMM yyyy')} Balance</span>
           <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', netMonth >= 0 ? 'bg-green-500/30 text-green-200' : 'bg-red-400/30 text-red-200')}>
-            {netMonth >= 0 ? '+' : ''}{formatCurrency(netMonth)}
+            {netMonth >= 0 ? '+' : ''}{formatCurrency(netMonth, currency)}
           </span>
         </div>
         <p className="text-4xl font-bold tracking-tight mt-1">
-          {isLoading ? '—' : formatCurrency(data?.totalBalance ?? 0)}
+          {isLoading ? '—' : formatCurrency(data?.totalBalance ?? 0, currency)}
         </p>
 
         <div className="flex gap-3 mt-5">
@@ -80,7 +82,7 @@ export function DashboardContent() {
             </div>
             {isLoading
               ? <Skeleton className="h-5 w-20 bg-white/20" />
-              : <p className="text-white font-semibold text-sm">{formatCurrency(data?.monthlyIncome ?? 0)}</p>
+              : <p className="text-white font-semibold text-sm">{formatCurrency(data?.monthlyIncome ?? 0, currency)}</p>
             }
           </div>
           <div className="flex-1 bg-white/15 rounded-2xl px-4 py-3">
@@ -90,7 +92,7 @@ export function DashboardContent() {
             </div>
             {isLoading
               ? <Skeleton className="h-5 w-20 bg-white/20" />
-              : <p className="text-white font-semibold text-sm">{formatCurrency(data?.monthlyExpenses ?? 0)}</p>
+              : <p className="text-white font-semibold text-sm">{formatCurrency(data?.monthlyExpenses ?? 0, currency)}</p>
             }
           </div>
         </div>

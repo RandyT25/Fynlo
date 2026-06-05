@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useAuth } from '@/hooks/use-auth'
+import { useCurrency } from '@/hooks/use-currency'
 import { TransactionForm } from './transaction-form'
 import { EmptyState } from '@/components/shared/empty-state'
 import { formatCurrency } from '@/lib/utils/format'
@@ -44,6 +45,7 @@ export function TransactionsContent() {
   const [editTxn, setEditTxn] = useState<TransactionWithRelations | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const { profile } = useAuth()
+  const currency = useCurrency()
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -87,7 +89,7 @@ export function TransactionsContent() {
           <div className="flex-1 text-center">
             <p className="text-xs text-muted-foreground">{format(currentMonth, 'MMMM yyyy')} Balance</p>
             <p className={cn('text-2xl font-bold leading-tight', netBalance >= 0 ? 'text-green-500' : 'text-destructive')}>
-              {isLoading ? '—' : `${netBalance >= 0 ? '+' : ''}${formatCurrency(netBalance)}`}
+              {isLoading ? '—' : `${netBalance >= 0 ? '+' : ''}${formatCurrency(netBalance, currency)}`}
             </p>
           </div>
           <button className="w-9 h-9 bg-muted rounded-full flex items-center justify-center shrink-0" onClick={() => setShowSearch(v => !v)}>
@@ -148,11 +150,11 @@ export function TransactionsContent() {
       <div className="px-4 py-3 flex gap-3">
         <div className="flex-1 bg-green-50 dark:bg-green-500/10 rounded-2xl px-4 py-3">
           <p className="text-[11px] text-muted-foreground mb-0.5">Income</p>
-          <p className="text-green-600 dark:text-green-400 font-bold">+{formatCurrency(monthIncome)}</p>
+          <p className="text-green-600 dark:text-green-400 font-bold">+{formatCurrency(monthIncome, currency)}</p>
         </div>
         <div className="flex-1 bg-red-50 dark:bg-red-500/10 rounded-2xl px-4 py-3">
           <p className="text-[11px] text-muted-foreground mb-0.5">Outcome</p>
-          <p className="text-destructive font-bold">-{formatCurrency(monthExpense)}</p>
+          <p className="text-destructive font-bold">-{formatCurrency(monthExpense, currency)}</p>
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAccounts } from '@/hooks/use-accounts'
+import { useCurrency } from '@/hooks/use-currency'
 import { AccountForm } from './account-form'
 import { EmptyState } from '@/components/shared/empty-state'
 import { formatCurrency } from '@/lib/utils/format'
@@ -22,6 +23,7 @@ export function AccountsContent() {
   const [showForm, setShowForm] = useState(false)
   const [editAccount, setEditAccount] = useState<Account | null>(null)
   const { accounts, isLoading, totalBalance, refetch, deleteAccount } = useAccounts()
+  const currency = useCurrency()
 
   const activeAccounts = accounts.filter(a => a.is_active)
 
@@ -63,8 +65,8 @@ export function AccountsContent() {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <p className="text-[11px] text-muted-foreground">Account Balance</p>
-              <p className="text-xl font-bold">{formatCurrency(totalBalance)}</p>
-              <p className="text-[11px] text-muted-foreground">USD</p>
+              <p className="text-xl font-bold">{formatCurrency(totalBalance, currency)}</p>
+              <p className="text-[11px] text-muted-foreground">{currency}</p>
             </div>
           </div>
         ) : (

@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useAccounts } from '@/hooks/use-accounts'
+import { useCurrency } from '@/hooks/use-currency'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types/database'
 
@@ -32,6 +33,7 @@ interface TransactionFormProps {
 export function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { accounts } = useAccounts()
+  const userCurrency = useCurrency()
   const supabase = createClient()
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransactionInput>({
@@ -53,7 +55,7 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
       : {
           type: 'expense' as const,
           date: format(new Date(), 'yyyy-MM-dd'),
-          currency: 'USD',
+          currency: userCurrency,
           tags: [] as string[],
           is_reconciled: false,
         },

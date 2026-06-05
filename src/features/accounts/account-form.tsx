@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { useCurrency } from '@/hooks/use-currency'
 import type { Account } from '@/types/database'
 
 const ACCOUNT_TYPES = [
@@ -38,6 +39,7 @@ interface AccountFormProps {
 
 export function AccountForm({ account, onSuccess, onCancel }: AccountFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const userCurrency = useCurrency()
   const supabase = createClient()
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<AccountInput>({
@@ -45,7 +47,7 @@ export function AccountForm({ account, onSuccess, onCancel }: AccountFormProps) 
     defaultValues: account ?? {
       type: 'checking',
       balance: 0,
-      currency: 'USD',
+      currency: userCurrency,
       color: '#3B82F6',
       icon: 'wallet',
       include_in_net_worth: true,

@@ -33,24 +33,27 @@ const CURRENCIES = [
   { code: 'MXN', label: 'Mexican Peso' },
 ]
 
-const TIMEZONES = [
-  { value: 'UTC', label: 'UTC' },
-  { value: 'America/New_York', label: 'Eastern (New York)' },
-  { value: 'America/Chicago', label: 'Central (Chicago)' },
-  { value: 'America/Denver', label: 'Mountain (Denver)' },
-  { value: 'America/Los_Angeles', label: 'Pacific (Los Angeles)' },
-  { value: 'America/Sao_Paulo', label: 'São Paulo' },
-  { value: 'Europe/London', label: 'London' },
-  { value: 'Europe/Paris', label: 'Paris / Berlin' },
-  { value: 'Europe/Moscow', label: 'Moscow' },
-  { value: 'Asia/Dubai', label: 'Dubai' },
-  { value: 'Asia/Kolkata', label: 'India (Kolkata)' },
-  { value: 'Asia/Singapore', label: 'Singapore' },
-  { value: 'Asia/Tokyo', label: 'Tokyo' },
-  { value: 'Asia/Seoul', label: 'Seoul' },
-  { value: 'Asia/Shanghai', label: 'Shanghai' },
-  { value: 'Australia/Sydney', label: 'Sydney' },
-]
+// Full IANA timezone list with UTC offset labels
+function buildTimezones() {
+  try {
+    const zones = Intl.supportedValuesOf('timeZone')
+    return zones.map(tz => {
+      try {
+        const offset = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'shortOffset' })
+          .formatToParts(new Date())
+          .find(p => p.type === 'timeZoneName')?.value ?? ''
+        const city = tz.split('/').pop()?.replace(/_/g, ' ') ?? tz
+        return { value: tz, label: `${city}`, offset }
+      } catch {
+        return { value: tz, label: tz, offset: '' }
+      }
+    }).sort((a, b) => a.value.localeCompare(b.value))
+  } catch {
+    return [{ value: 'UTC', label: 'UTC', offset: 'GMT+0' }]
+  }
+}
+
+const ALL_TIMEZONES = buildTimezones()
 
 type Sheet = 'profile' | 'currency' | 'timezone' | null
 
@@ -79,7 +82,7 @@ export function SettingsContent() {
   }
 
   const currencyLabel = CURRENCIES.find(c => c.code === currency)?.code ?? currency
-  const timezoneLabel = TIMEZONES.find(t => t.value === timezone)?.label ?? timezone
+  const timezoneLabel = ALL_TIMEZONES.find(t => t.value === timezone)?.label ?? timezone
 
   return (
     <div className="px-4 pt-4 pb-8 space-y-5">
@@ -205,17 +208,18 @@ export function SettingsContent() {
         <SheetContent side="bottom" className="h-[70dvh] rounded-t-3xl">
           <SheetHeader className="pb-4"><SheetTitle>Timezone</SheetTitle></SheetHeader>
           <div className="overflow-y-auto space-y-1 pb-4">
-            {TIMEZONES.map(tz => (
+            {ALL_TIMEZONES.map(tz => (
               <button
                 key={tz.value}
                 className={cn(
-                  'flex items-center w-full px-4 py-3.5 rounded-2xl text-left transition-colors',
+                  'flex items-center w-full px-4 py-3 rounded-2xl text-left transition-colors',
                   timezone === tz.value ? 'bg-primary/10' : 'active:bg-muted/50'
                 )}
                 onClick={() => { setTimezone(tz.value); save({ timezone: tz.value }) }}
               >
-                <span className="flex-1 text-sm font-medium">{tz.label}</span>
-                {timezone === tz.value && <Check className="w-4 h-4 text-primary" />}
+                <span className="flex-1 text-sm font-medium truncate">{tz.label}</span>
+                <span className="text-xs text-muted-foreground ml-2 shrink-0">{tz.offset}</span>
+                {timezone === tz.value && <Check className="w-4 h-4 text-primary ml-2 shrink-0" />}
               </button>
             ))}
           </div>
