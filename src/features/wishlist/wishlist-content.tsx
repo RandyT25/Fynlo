@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, ShoppingCart, Target } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +24,7 @@ export function WishlistContent() {
   const [showForm, setShowForm] = useState(false)
   const [newItem, setNewItem] = useState({ name: '', description: '', target_amount: '', current_amount: '0', url: '' })
   const supabase = createClient()
+  const currencySymbol = useCurrencySymbol()
 
   const fetchItems = useCallback(async () => {
     setIsLoading(true)
@@ -80,18 +82,18 @@ export function WishlistContent() {
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Item</Button>
           </SheetTrigger>
-          <SheetContent className="h-[90dvh]">
+          <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
             <SheetHeader><SheetTitle>Add to Wishlist</SheetTitle></SheetHeader>
             <div className="mt-6 space-y-4">
               <div className="space-y-2"><Label>Item Name</Label><Input placeholder="e.g., MacBook Pro" value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Target Price</Label>
-                  <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
                     <Input type="number" className="pl-7" value={newItem.target_amount} onChange={e => setNewItem(p => ({ ...p, target_amount: e.target.value }))} />
                   </div>
                 </div>
                 <div className="space-y-2"><Label>Saved So Far</Label>
-                  <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
                     <Input type="number" className="pl-7" value={newItem.current_amount} onChange={e => setNewItem(p => ({ ...p, current_amount: e.target.value }))} />
                   </div>
                 </div>

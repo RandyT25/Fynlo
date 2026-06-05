@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { useCurrency } from '@/hooks/use-currency'
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import type { Account } from '@/types/database'
 
 const ACCOUNT_TYPES = [
@@ -41,6 +42,7 @@ interface AccountFormProps {
 export function AccountForm({ account, presetType, onSuccess, onCancel }: AccountFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const userCurrency = useCurrency()
+  const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<AccountInput>({
@@ -114,7 +116,7 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
       <div className="space-y-2">
         <Label>Balance</Label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
           <Input type="number" step="0.01" className="pl-7" {...register('balance', { valueAsNumber: true })} />
         </div>
         {errors.balance && <p className="text-xs text-destructive">{errors.balance.message}</p>}

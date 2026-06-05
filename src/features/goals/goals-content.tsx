@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, Target } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
@@ -166,6 +167,7 @@ interface GoalFormProps {
 
 function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<GoalInput>({
@@ -219,7 +221,7 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
         <div className="space-y-2">
           <Label>Target Amount</Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
             <Input type="number" step="0.01" className="pl-7" {...register('target_amount', { valueAsNumber: true })} />
           </div>
           {errors.target_amount && <p className="text-xs text-destructive">{errors.target_amount.message}</p>}
@@ -227,7 +229,7 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
         <div className="space-y-2">
           <Label>Current Amount</Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
             <Input type="number" step="0.01" className="pl-7" {...register('current_amount', { valueAsNumber: true })} />
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Plus, CreditCard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format, differenceInDays, parseISO } from 'date-fns'
 import { toast } from 'sonner'
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -151,6 +152,7 @@ interface SubscriptionFormProps {
 
 function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<SubscriptionInput>({
@@ -190,7 +192,7 @@ function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Amount</Label>
-          <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+          <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
             <Input type="number" step="0.01" className="pl-7" {...register('amount', { valueAsNumber: true })} />
           </div>
           {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}

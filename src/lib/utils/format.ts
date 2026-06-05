@@ -1,5 +1,14 @@
 import { format, formatDistanceToNow, parseISO, isToday, isYesterday } from 'date-fns'
 
+export function getCurrencySymbol(currency = 'USD'): string {
+  try {
+    const parts = new Intl.NumberFormat('en', { style: 'currency', currency }).formatToParts(1)
+    return parts.find(p => p.type === 'currency')?.value ?? currency
+  } catch {
+    return currency
+  }
+}
+
 export function formatCurrency(
   amount: number,
   currency = 'USD',

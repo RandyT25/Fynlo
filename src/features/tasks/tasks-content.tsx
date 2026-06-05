@@ -75,7 +75,7 @@ export function TasksContent() {
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Task</Button>
           </SheetTrigger>
-          <SheetContent className="h-[90dvh]">
+          <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
             <SheetHeader><SheetTitle>New Task</SheetTitle></SheetHeader>
             <div className="mt-6 space-y-4">
               <div className="space-y-2"><Label>Title</Label><Input placeholder="e.g., Pay credit card bill" value={newTask.title} onChange={e => setNewTask(p => ({ ...p, title: e.target.value }))} /></div>

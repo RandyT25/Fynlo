@@ -5,6 +5,7 @@ import { Plus, Repeat2, Play, Pause, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format, addDays, addWeeks, addMonths, addYears } from 'date-fns'
 import { toast } from 'sonner'
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -66,7 +67,7 @@ export function RecurringContent() {
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Recurring</Button>
           </SheetTrigger>
-          <SheetContent className="w-full overflow-y-auto rounded-t-3xl">
+          <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
             <SheetHeader><SheetTitle>Add Recurring Transaction</SheetTitle></SheetHeader>
             <div className="mt-6">
               <RecurringForm onSuccess={() => { setShowForm(false); fetchRecurrings() }} onCancel={() => setShowForm(false)} />
@@ -123,6 +124,7 @@ interface RecurringFormProps { onSuccess?: () => void; onCancel?: () => void }
 function RecurringForm({ onSuccess, onCancel }: RecurringFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { accounts } = useAccounts()
+  const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<RecurringTransactionInput>({
@@ -169,7 +171,7 @@ function RecurringForm({ onSuccess, onCancel }: RecurringFormProps) {
       </div>
       <div className="space-y-2">
         <Label>Amount</Label>
-        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
           <Input type="number" step="0.01" className="pl-7" {...register('amount', { valueAsNumber: true })} />
         </div>
         {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}

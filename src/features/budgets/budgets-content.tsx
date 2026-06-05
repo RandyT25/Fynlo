@@ -5,6 +5,7 @@ import { Plus, PiggyBank, AlertCircle, CheckCircle2, ChevronRight, ChevronDown }
 import { motion, AnimatePresence } from 'framer-motion'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { budgetSchema, type BudgetInput } from '@/lib/validations/budget'
 import { useForm } from 'react-hook-form'
@@ -186,6 +187,7 @@ interface BudgetFormProps {
 
 function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<BudgetInput>({
@@ -243,7 +245,7 @@ function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps
         <div className="space-y-2">
           <Label>Amount</Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
             <Input type="number" step="0.01" className="pl-7" {...register('amount', { valueAsNumber: true })} />
           </div>
           {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}

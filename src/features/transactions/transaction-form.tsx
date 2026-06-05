@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCurrency } from '@/hooks/use-currency'
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types/database'
 
@@ -34,6 +35,7 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
   const [isLoading, setIsLoading] = useState(false)
   const { accounts } = useAccounts()
   const userCurrency = useCurrency()
+  const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransactionInput>({
@@ -110,7 +112,7 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
       <div className="space-y-2">
         <Label>Amount</Label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">{currencySymbol}</span>
           <Input
             type="number"
             step="0.01"
@@ -125,16 +127,22 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
       {/* Account */}
       <div className="space-y-2">
         <Label>Account</Label>
-        <Select onValueChange={(v: string | null) => setValue('account_id', v as any)} defaultValue={transaction?.account_id}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select account" />
-          </SelectTrigger>
-          <SelectContent>
-            {accounts.map(acc => (
-              <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {accounts.length === 0 ? (
+          <a href="/accounts" className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-sm text-amber-700 dark:text-amber-400">
+            ⚠️ No accounts yet — tap here to add one first
+          </a>
+        ) : (
+          <Select onValueChange={(v: string | null) => setValue('account_id', v as any)} defaultValue={transaction?.account_id}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map(acc => (
+                <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {errors.account_id && <p className="text-xs text-destructive">{errors.account_id.message}</p>}
       </div>
 
