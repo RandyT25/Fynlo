@@ -33,11 +33,12 @@ const COLORS = ['#3B82F6', '#8B5CF6', '#22C55E', '#EF4444', '#F97316', '#F59E0B'
 
 interface AccountFormProps {
   account?: Account
+  presetType?: string
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-export function AccountForm({ account, onSuccess, onCancel }: AccountFormProps) {
+export function AccountForm({ account, presetType, onSuccess, onCancel }: AccountFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const userCurrency = useCurrency()
   const supabase = createClient()
@@ -45,7 +46,7 @@ export function AccountForm({ account, onSuccess, onCancel }: AccountFormProps) 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<AccountInput>({
     resolver: zodResolver(accountSchema),
     defaultValues: account ?? {
-      type: 'checking',
+      type: (presetType as any) ?? 'checking',
       balance: 0,
       currency: userCurrency,
       color: '#3B82F6',
