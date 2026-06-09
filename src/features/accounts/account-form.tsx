@@ -65,18 +65,25 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { toast.error('Not authenticated'); setIsLoading(false); return }
 
-    const payload = {
-      name: data.name, type: data.type, balance: data.balance,
-      currency: data.currency, color: data.color, icon: data.icon,
-      institution: data.institution ?? null, notes: data.notes ?? null,
-      include_in_net_worth: data.include_in_net_worth,
-    }
     if (account) {
-      const { error } = await supabase.from('accounts').update(payload).eq('id', account.id)
+      // Never overwrite balance on edit — the DB trigger maintains it via transactions
+      const editPayload = {
+        name: data.name, type: data.type,
+        currency: data.currency, color: data.color, icon: data.icon,
+        institution: data.institution ?? null, notes: data.notes ?? null,
+        include_in_net_worth: data.include_in_net_worth,
+      }
+      const { error } = await supabase.from('accounts').update(editPayload).eq('id', account.id)
       if (error) { toast.error(error.message); setIsLoading(false); return }
       toast.success('Account updated')
     } else {
-      const { error } = await supabase.from('accounts').insert({ ...payload, user_id: user.id })
+      const { error } = await supabase.from('accounts').insert({
+        name: data.name, type: data.type, balance: data.balance,
+        currency: data.currency, color: data.color, icon: data.icon,
+        institution: data.institution ?? null, notes: data.notes ?? null,
+        include_in_net_worth: data.include_in_net_worth,
+        user_id: user.id,
+      })
       if (error) { toast.error(error.message); setIsLoading(false); return }
       toast.success('Account created')
     }
@@ -113,23 +120,31 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Balance</Label>
-        <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
-          <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
-            {currencySymbol}
-          </span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            placeholder="0.00"
-            className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            {...register('balance', { valueAsNumber: true })}
-          />
+      {!account ? (
+        <div className="space-y-2">
+          <Label>Starting Balance</Label>
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+            <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+              {currencySymbol}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.00"
+              className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              {...register('balance', { valueAsNumber: true })}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">Current balance in this account before tracking in Fynlo</p>
+          {errors.balance && <p className="text-xs text-destructive">{errors.balance.message}</p>}
         </div>
-        {errors.balance && <p className="text-xs text-destructive">{errors.balance.message}</p>}
-      </div>
+      ) : (
+        <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-muted/40">
+          <p className="text-sm text-muted-foreground">Balance</p>
+          <p className="text-sm font-semibold">{currencySymbol}{account.balance.toLocaleString()}</p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>Color</Label>
