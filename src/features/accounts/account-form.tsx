@@ -104,7 +104,7 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
         </div>
         <div className="space-y-2">
           <Label>Currency</Label>
-          <Select onValueChange={(v) => setValue('currency', v as string)} defaultValue={account?.currency ?? 'USD'}>
+          <Select onValueChange={(v) => setValue('currency', v as string)} defaultValue={account?.currency ?? userCurrency}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -115,9 +115,18 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
 
       <div className="space-y-2">
         <Label>Balance</Label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
-          <Input type="number" step="0.01" className="pl-7" {...register('balance', { valueAsNumber: true })} />
+        <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+          <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+            {currencySymbol}
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            placeholder="0.00"
+            className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            {...register('balance', { valueAsNumber: true })}
+          />
         </div>
         {errors.balance && <p className="text-xs text-destructive">{errors.balance.message}</p>}
       </div>
@@ -155,10 +164,10 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
         <Switch checked={includeNetWorth} onCheckedChange={(v) => setValue('include_in_net_worth', v)} />
       </div>
 
-      <div className="flex gap-2 pt-2">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1">Cancel</Button>}
-        <Button type="submit" className="flex-1 gradient-primary border-0" disabled={isLoading}>
-          {isLoading ? 'Saving...' : account ? 'Update Account' : 'Create Account'}
+      <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">Cancel</Button>}
+        <Button type="submit" className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold" disabled={isLoading}>
+          {isLoading ? 'Saving…' : account ? 'Update Account' : 'Create Account'}
         </Button>
       </div>
     </form>

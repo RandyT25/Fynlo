@@ -188,14 +188,15 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
         <Textarea placeholder="Add any notes..." rows={2} {...register('notes')} />
       </div>
 
-      <div className="flex gap-2 pt-2">
+      {/* Pinned action row — sticky so it never scrolls off on small screens */}
+      <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+          <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">
             Cancel
           </Button>
         )}
-        <Button type="submit" className="flex-1 gradient-primary border-0" disabled={isLoading}>
-          {isLoading ? 'Saving...' : transaction ? 'Update Transaction' : 'Add Transaction'}
+        <Button type="submit" className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold" disabled={isLoading}>
+          {isLoading ? 'Saving…' : transaction ? 'Update' : 'Add Transaction'}
         </Button>
       </div>
     </form>

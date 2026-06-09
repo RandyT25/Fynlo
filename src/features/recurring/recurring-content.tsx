@@ -67,9 +67,9 @@ export function RecurringContent() {
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Recurring</Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-            <SheetHeader><SheetTitle>Add Recurring Transaction</SheetTitle></SheetHeader>
-            <div className="mt-6">
+          <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+            <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>Add Recurring Transaction</SheetTitle></SheetHeader>
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
               <RecurringForm onSuccess={() => { setShowForm(false); fetchRecurrings() }} onCancel={() => setShowForm(false)} />
             </div>
           </SheetContent>
@@ -208,10 +208,10 @@ function RecurringForm({ onSuccess, onCancel }: RecurringFormProps) {
         <Label>End Date (optional)</Label>
         <Input type="date" {...register('end_date')} />
       </div>
-      <div className="flex gap-2 pt-2">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1">Cancel</Button>}
-        <Button type="submit" className="flex-1 gradient-primary border-0" disabled={isLoading}>
-          {isLoading ? 'Saving...' : 'Create Recurring'}
+      <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">Cancel</Button>}
+        <Button type="submit" className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold" disabled={isLoading}>
+          {isLoading ? 'Saving…' : 'Create Recurring'}
         </Button>
       </div>
     </form>

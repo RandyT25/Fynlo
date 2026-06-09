@@ -5,6 +5,7 @@ import { Plus, PiggyBank, AlertCircle, CheckCircle2, ChevronRight, ChevronDown }
 import { motion, AnimatePresence } from 'framer-motion'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
+import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { budgetSchema, type BudgetInput } from '@/lib/validations/budget'
@@ -38,6 +39,7 @@ export function BudgetsContent() {
   const [showForm, setShowForm] = useState(false)
   const [editBudget, setEditBudget] = useState<Budget | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const currency = useCurrency()
   const supabase = createClient()
 
   const fetchData = useCallback(async () => {
@@ -84,17 +86,17 @@ export function BudgetsContent() {
       <div className="flex gap-3 mb-5">
         <div className="flex-1 gradient-primary rounded-2xl p-4 text-white">
           <p className="text-white/70 text-xs mb-1">Budgeted</p>
-          <p className="text-2xl font-bold">{formatCurrency(totalBudgeted)}</p>
+          <p className="text-2xl font-bold">{formatCurrency(totalBudgeted, currency)}</p>
         </div>
         <div className="flex flex-col gap-2">
           <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
             <p className="text-[11px] text-muted-foreground">Spent</p>
-            <p className="font-bold text-sm text-destructive">{formatCurrency(totalSpent)}</p>
+            <p className="font-bold text-sm text-destructive">{formatCurrency(totalSpent, currency)}</p>
           </div>
           <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
             <p className="text-[11px] text-muted-foreground">Left</p>
             <p className={cn('font-bold text-sm', totalBudgeted - totalSpent >= 0 ? 'text-green-500' : 'text-destructive')}>
-              {formatCurrency(Math.abs(totalBudgeted - totalSpent))}
+              {formatCurrency(Math.abs(totalBudgeted - totalSpent), currency)}
             </p>
           </div>
         </div>
@@ -134,8 +136,8 @@ export function BudgetsContent() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-sm">{formatCurrency(budget.spent)}</p>
-                      <p className="text-xs text-muted-foreground">/ {formatCurrency(budget.amount)}</p>
+                      <p className="font-bold text-sm">{formatCurrency(budget.spent, currency)}</p>
+                      <p className="text-xs text-muted-foreground">/ {formatCurrency(budget.amount, currency)}</p>
                     </div>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -144,7 +146,7 @@ export function BudgetsContent() {
                   <div className="flex justify-between mt-1.5">
                     <span className="text-[11px] text-muted-foreground">{Math.round(Math.min(budget.utilization, 100))}% used</span>
                     <span className={cn('text-[11px] font-medium', remaining >= 0 ? 'text-green-500' : 'text-destructive')}>
-                      {remaining >= 0 ? `${formatCurrency(remaining)} left` : `${formatCurrency(Math.abs(remaining))} over`}
+                      {remaining >= 0 ? `${formatCurrency(remaining, currency)} left` : `${formatCurrency(Math.abs(remaining), currency)} over`}
                     </span>
                   </div>
                 </div>
@@ -164,14 +166,16 @@ export function BudgetsContent() {
       </button>
 
       <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader className="pb-2"><SheetTitle>{editBudget ? 'Edit' : 'Add'} Budget</SheetTitle></SheetHeader>
-          <BudgetForm
-            budget={editBudget ?? undefined}
-            categories={categories}
-            onSuccess={() => { setShowForm(false); setEditBudget(null); fetchData() }}
-            onCancel={() => { setShowForm(false); setEditBudget(null) }}
-          />
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>{editBudget ? 'Edit' : 'Add'} Budget</SheetTitle></SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+            <BudgetForm
+              budget={editBudget ?? undefined}
+              categories={categories}
+              onSuccess={() => { setShowForm(false); setEditBudget(null); fetchData() }}
+              onCancel={() => { setShowForm(false); setEditBudget(null) }}
+            />
+          </div>
         </SheetContent>
       </Sheet>
     </div>
@@ -244,9 +248,18 @@ function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Amount</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
-            <Input type="number" step="0.01" className="pl-7" {...register('amount', { valueAsNumber: true })} />
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+            <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+              {currencySymbol}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.00"
+              className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              {...register('amount', { valueAsNumber: true })}
+            />
           </div>
           {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
         </div>
@@ -277,10 +290,10 @@ function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps
         <Switch checked={rollover} onCheckedChange={(v) => setValue('rollover_enabled', v)} />
       </div>
 
-      <div className="flex gap-2 pt-2">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1">Cancel</Button>}
-        <Button type="submit" className="flex-1 gradient-primary border-0" disabled={isLoading}>
-          {isLoading ? 'Saving...' : budget ? 'Update' : 'Create Budget'}
+      <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">Cancel</Button>}
+        <Button type="submit" className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold" disabled={isLoading}>
+          {isLoading ? 'Saving…' : budget ? 'Update' : 'Create Budget'}
         </Button>
       </div>
     </form>

@@ -228,25 +228,31 @@ export function TransactionsContent() {
 
       {/* Add sheet */}
       <Sheet open={showAdd} onOpenChange={setShowAdd}>
-        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader className="pb-2"><SheetTitle>Add Transaction</SheetTitle></SheetHeader>
-          <TransactionForm onSuccess={() => { setShowAdd(false); refetch() }} onCancel={() => setShowAdd(false)} />
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30">
+            <SheetTitle>Add Transaction</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+            <TransactionForm onSuccess={() => { setShowAdd(false); refetch() }} onCancel={() => setShowAdd(false)} />
+          </div>
         </SheetContent>
       </Sheet>
 
       {/* Edit sheet */}
       <Sheet open={!!editTxn} onOpenChange={open => !open && setEditTxn(null)}>
-        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader className="pb-2"><SheetTitle>Edit Transaction</SheetTitle></SheetHeader>
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30">
+            <SheetTitle>Edit Transaction</SheetTitle>
+          </SheetHeader>
           {editTxn && (
-            <div className="pb-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
               <TransactionForm
                 transaction={editTxn}
                 onSuccess={() => { setEditTxn(null); refetch() }}
                 onCancel={() => setEditTxn(null)}
               />
               <button
-                className="w-full mt-3 py-3 text-destructive text-sm font-medium"
+                className="w-full py-3 text-destructive text-sm font-medium"
                 onClick={() => { handleDelete(editTxn.id); setEditTxn(null) }}
               >
                 Delete Transaction

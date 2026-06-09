@@ -82,9 +82,9 @@ export function WishlistContent() {
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Item</Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-            <SheetHeader><SheetTitle>Add to Wishlist</SheetTitle></SheetHeader>
-            <div className="mt-6 space-y-4">
+          <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+            <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>Add to Wishlist</SheetTitle></SheetHeader>
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-4">
               <div className="space-y-2"><Label>Item Name</Label><Input placeholder="e.g., MacBook Pro" value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Target Price</Label>
@@ -100,9 +100,9 @@ export function WishlistContent() {
               </div>
               <div className="space-y-2"><Label>URL (optional)</Label><Input placeholder="https://..." value={newItem.url} onChange={e => setNewItem(p => ({ ...p, url: e.target.value }))} /></div>
               <div className="space-y-2"><Label>Notes</Label><Textarea rows={2} value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} /></div>
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowForm(false)} className="flex-1">Cancel</Button>
-                <Button onClick={addItem} className="flex-1 gradient-primary border-0">Add</Button>
+              <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+                <Button variant="outline" onClick={() => setShowForm(false)} className="flex-1 h-12 rounded-2xl">Cancel</Button>
+                <Button onClick={addItem} className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold">Add</Button>
               </div>
             </div>
           </SheetContent>

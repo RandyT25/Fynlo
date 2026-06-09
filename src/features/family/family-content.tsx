@@ -78,13 +78,13 @@ export function FamilyContent() {
           action={{ label: 'Create Family', onClick: () => setShowCreate(true) }}
         />
         <Sheet open={showCreate} onOpenChange={setShowCreate}>
-          <SheetContent className="h-[90dvh]">
-            <SheetHeader><SheetTitle>Create Family Group</SheetTitle></SheetHeader>
-            <div className="mt-6 space-y-4">
+          <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+            <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>Create Family Group</SheetTitle></SheetHeader>
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-4">
               <div className="space-y-2"><Label>Family Name</Label><Input placeholder="e.g., The Smiths" value={familyName} onChange={e => setFamilyName(e.target.value)} /></div>
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1">Cancel</Button>
-                <Button onClick={createFamily} className="flex-1 gradient-primary border-0">Create</Button>
+              <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+                <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 h-12 rounded-2xl">Cancel</Button>
+                <Button onClick={createFamily} className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold">Create</Button>
               </div>
             </div>
           </SheetContent>
@@ -114,9 +114,9 @@ export function FamilyContent() {
             <SheetTrigger>
               <Button size="sm" className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Invite</Button>
             </SheetTrigger>
-            <SheetContent className="h-[90dvh]">
-              <SheetHeader><SheetTitle>Invite Member</SheetTitle></SheetHeader>
-              <div className="mt-6 space-y-4">
+            <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+              <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>Invite Member</SheetTitle></SheetHeader>
+              <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-4">
                 <div className="space-y-2"><Label>Email Address</Label><Input type="email" placeholder="partner@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} /></div>
                 <div className="space-y-2">
                   <Label>Role</Label>
@@ -129,9 +129,9 @@ export function FamilyContent() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setShowInvite(false)} className="flex-1">Cancel</Button>
-                  <Button onClick={inviteMember} className="flex-1 gradient-primary border-0 gap-2"><Mail className="w-4 h-4" />Send Invite</Button>
+                <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+                  <Button variant="outline" onClick={() => setShowInvite(false)} className="flex-1 h-12 rounded-2xl">Cancel</Button>
+                  <Button onClick={inviteMember} className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold gap-2"><Mail className="w-4 h-4" />Send Invite</Button>
                 </div>
               </div>
             </SheetContent>

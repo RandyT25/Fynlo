@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, ChevronRight } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { Plus, ChevronRight, Banknote, Landmark, PiggyBank, CreditCard, FileText, TrendingUp, Bitcoin, Briefcase, Wallet } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -13,16 +14,16 @@ import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 import type { Account, AccountType } from '@/types/database'
 
-const ACCOUNT_META: Record<AccountType, { icon: string; color: string; label: string }> = {
-  cash:        { icon: '💵', color: '#22C55E', label: 'Cash' },
-  checking:    { icon: '🏦', color: '#3B82F6', label: 'Checking' },
-  savings:     { icon: '🐷', color: '#8B5CF6', label: 'Savings' },
-  credit_card: { icon: '💳', color: '#EF4444', label: 'Credit Card' },
-  loan:        { icon: '📋', color: '#F97316', label: 'Loan' },
-  investment:  { icon: '📈', color: '#10B981', label: 'Investment' },
-  crypto:      { icon: '₿',  color: '#F59E0B', label: 'Crypto' },
-  business:    { icon: '🏢', color: '#6366F1', label: 'Business' },
-  custom:      { icon: '💰', color: '#EC4899', label: 'Custom' },
+const ACCOUNT_META: Record<AccountType, { icon: LucideIcon; color: string; label: string }> = {
+  cash:        { icon: Banknote,   color: '#22C55E', label: 'Cash' },
+  checking:    { icon: Landmark,   color: '#3B82F6', label: 'Checking' },
+  savings:     { icon: PiggyBank,  color: '#8B5CF6', label: 'Savings' },
+  credit_card: { icon: CreditCard, color: '#EF4444', label: 'Credit Card' },
+  loan:        { icon: FileText,   color: '#F97316', label: 'Loan' },
+  investment:  { icon: TrendingUp, color: '#10B981', label: 'Investment' },
+  crypto:      { icon: Bitcoin,    color: '#F59E0B', label: 'Crypto' },
+  business:    { icon: Briefcase,  color: '#6366F1', label: 'Business' },
+  custom:      { icon: Wallet,     color: '#EC4899', label: 'Custom' },
 }
 
 const QUICK_TYPES: AccountType[] = ['checking', 'savings', 'cash', 'credit_card', 'investment', 'crypto']
@@ -72,8 +73,8 @@ export function AccountsContent() {
             </div>
           </div>
         ) : (
-          <div className="w-[180px] h-[180px] rounded-full bg-muted/50 flex flex-col items-center justify-center gap-1">
-            <span className="text-4xl">🏦</span>
+          <div className="w-[180px] h-[180px] rounded-full bg-muted/50 flex flex-col items-center justify-center gap-2">
+            <Landmark className="w-10 h-10 text-muted-foreground/50" />
             <p className="text-xs text-muted-foreground">No accounts yet</p>
           </div>
         )}
@@ -111,8 +112,8 @@ export function AccountsContent() {
                     onClick={() => openAdd(type)}
                     className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border border-border/50 shadow-sm active:scale-95 transition-transform"
                   >
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ backgroundColor: `${meta.color}22` }}>
-                      {meta.icon}
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${meta.color}22` }}>
+                      <meta.icon className="w-6 h-6" style={{ color: meta.color }} />
                     </div>
                     <span className="text-xs font-medium text-center leading-tight">{meta.label}</span>
                   </button>
@@ -134,8 +135,8 @@ export function AccountsContent() {
                   className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border/50 shadow-sm active:bg-muted/50 cursor-pointer"
                   onClick={() => setEditAccount(account)}
                 >
-                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: `${account.color ?? meta.color}22` }}>
-                    {meta.icon}
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${account.color ?? meta.color}22` }}>
+                    <meta.icon className="w-5 h-5" style={{ color: account.color ?? meta.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{account.name}</p>
@@ -154,29 +155,35 @@ export function AccountsContent() {
 
       {/* Add sheet */}
       <Sheet open={showForm} onOpenChange={open => { setShowForm(open); if (!open) setPresetType(undefined) }}>
-        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader className="pb-2"><SheetTitle>Add Account</SheetTitle></SheetHeader>
-          <AccountForm
-            presetType={presetType}
-            onSuccess={() => { setShowForm(false); setPresetType(undefined); refetch() }}
-            onCancel={() => { setShowForm(false); setPresetType(undefined) }}
-          />
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30">
+            <SheetTitle>Add Account</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+            <AccountForm
+              presetType={presetType}
+              onSuccess={() => { setShowForm(false); setPresetType(undefined); refetch() }}
+              onCancel={() => { setShowForm(false); setPresetType(undefined) }}
+            />
+          </div>
         </SheetContent>
       </Sheet>
 
       {/* Edit sheet */}
       <Sheet open={!!editAccount} onOpenChange={open => !open && setEditAccount(null)}>
-        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader className="pb-2"><SheetTitle>Edit Account</SheetTitle></SheetHeader>
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30">
+            <SheetTitle>Edit Account</SheetTitle>
+          </SheetHeader>
           {editAccount && (
-            <div className="pb-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
               <AccountForm
                 account={editAccount}
                 onSuccess={() => { setEditAccount(null); refetch() }}
                 onCancel={() => setEditAccount(null)}
               />
               <button
-                className="w-full mt-3 py-3 text-destructive text-sm font-medium"
+                className="w-full py-3 text-destructive text-sm font-medium"
                 onClick={() => { deleteAccount(editAccount.id); setEditAccount(null) }}
               >
                 Delete Account

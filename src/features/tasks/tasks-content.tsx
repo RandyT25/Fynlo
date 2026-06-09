@@ -75,9 +75,9 @@ export function TasksContent() {
           <SheetTrigger>
             <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Task</Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-            <SheetHeader><SheetTitle>New Task</SheetTitle></SheetHeader>
-            <div className="mt-6 space-y-4">
+          <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+            <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>New Task</SheetTitle></SheetHeader>
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-4">
               <div className="space-y-2"><Label>Title</Label><Input placeholder="e.g., Pay credit card bill" value={newTask.title} onChange={e => setNewTask(p => ({ ...p, title: e.target.value }))} /></div>
               <div className="space-y-2"><Label>Description</Label><Textarea rows={2} value={newTask.description} onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-4">
@@ -98,9 +98,9 @@ export function TasksContent() {
                   </Select>
                 </div>
               </div>
-              <div className="flex gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="flex-1">Cancel</Button>
-                <Button onClick={addTask} className="flex-1 gradient-primary border-0">Add Task</Button>
+              <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+                <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="flex-1 h-12 rounded-2xl">Cancel</Button>
+                <Button onClick={addTask} className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold">Add Task</Button>
               </div>
             </div>
           </SheetContent>

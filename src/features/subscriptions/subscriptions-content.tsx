@@ -5,6 +5,7 @@ import { Plus, CreditCard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format, differenceInDays, parseISO } from 'date-fns'
 import { toast } from 'sonner'
+import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -40,6 +41,7 @@ export function SubscriptionsContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editSub, setEditSub] = useState<Subscription | null>(null)
+  const currency = useCurrency()
   const supabase = createClient()
 
   const fetchSubs = useCallback(async () => {
@@ -72,12 +74,12 @@ export function SubscriptionsContent() {
       <div className="flex gap-3 mb-5">
         <div className="flex-1 gradient-primary rounded-2xl p-4 text-white">
           <p className="text-white/70 text-xs mb-1">Monthly Cost</p>
-          <p className="text-2xl font-bold">{formatCurrency(monthlyTotal)}</p>
+          <p className="text-2xl font-bold">{formatCurrency(monthlyTotal, currency)}</p>
         </div>
         <div className="flex flex-col gap-2">
           <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
             <p className="text-[11px] text-muted-foreground">Yearly</p>
-            <p className="font-bold text-sm text-destructive">{formatCurrency(monthlyTotal * 12)}</p>
+            <p className="font-bold text-sm text-destructive">{formatCurrency(monthlyTotal * 12, currency)}</p>
           </div>
           <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
             <p className="text-[11px] text-muted-foreground">Active</p>
@@ -131,13 +133,15 @@ export function SubscriptionsContent() {
       </button>
 
       <Sheet open={showForm} onOpenChange={open => { setShowForm(open); if (!open) setEditSub(null) }}>
-        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader className="pb-2"><SheetTitle>{editSub ? 'Edit' : 'Add'} Subscription</SheetTitle></SheetHeader>
-          <SubscriptionForm
-            sub={editSub ?? undefined}
-            onSuccess={() => { setShowForm(false); setEditSub(null); fetchSubs() }}
-            onCancel={() => { setShowForm(false); setEditSub(null) }}
-          />
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>{editSub ? 'Edit' : 'Add'} Subscription</SheetTitle></SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+            <SubscriptionForm
+              sub={editSub ?? undefined}
+              onSuccess={() => { setShowForm(false); setEditSub(null); fetchSubs() }}
+              onCancel={() => { setShowForm(false); setEditSub(null) }}
+            />
+          </div>
         </SheetContent>
       </Sheet>
     </div>
@@ -152,6 +156,7 @@ interface SubscriptionFormProps {
 
 function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
@@ -161,7 +166,7 @@ function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
       name: sub.name, amount: sub.amount, currency: sub.currency,
       billing_cycle: sub.billing_cycle, next_billing_date: sub.next_billing_date,
       status: sub.status, notes: sub.notes ?? '',
-    } : { billing_cycle: 'monthly', status: 'active', currency: 'USD', next_billing_date: format(new Date(), 'yyyy-MM-dd') },
+    } : { billing_cycle: 'monthly', status: 'active', currency: userCurrency, next_billing_date: format(new Date(), 'yyyy-MM-dd') },
   })
 
   const onSubmit = async (data: SubscriptionInput) => {
@@ -192,8 +197,18 @@ function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Amount</Label>
-          <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
-            <Input type="number" step="0.01" className="pl-7" {...register('amount', { valueAsNumber: true })} />
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+            <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+              {currencySymbol}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.00"
+              className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              {...register('amount', { valueAsNumber: true })}
+            />
           </div>
           {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
         </div>
@@ -218,10 +233,10 @@ function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
         <Label>Website (optional)</Label>
         <Input placeholder="https://..." {...register('website_url')} />
       </div>
-      <div className="flex gap-2 pt-2">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1">Cancel</Button>}
-        <Button type="submit" className="flex-1 gradient-primary border-0" disabled={isLoading}>
-          {isLoading ? 'Saving...' : sub ? 'Update' : 'Add Subscription'}
+      <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">Cancel</Button>}
+        <Button type="submit" className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold" disabled={isLoading}>
+          {isLoading ? 'Saving…' : sub ? 'Update' : 'Add Subscription'}
         </Button>
       </div>
     </form>

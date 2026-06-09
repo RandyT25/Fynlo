@@ -49,50 +49,57 @@ export function DashboardContent() {
   return (
     <div className="flex flex-col min-h-full">
       {/* Hero balance */}
-      <div className="px-5 pt-5 pb-7 gradient-primary text-white rounded-b-3xl">
-        {/* Top row: avatar + bell */}
-        <div className="flex items-center justify-between mb-4">
-          <a href="/settings">
+      <div className="relative px-5 pt-5 pb-7 gradient-primary text-white rounded-b-[2rem] overflow-hidden">
+        {/* Subtle decorative orbs */}
+        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/5 -translate-y-20 translate-x-16 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full bg-white/5 translate-y-14 -translate-x-8 pointer-events-none" />
+        {/* Top row: avatar + greeting + bell */}
+        <div className="relative flex items-center justify-between mb-5">
+          <a href="/settings" className="flex items-center gap-2.5">
             <Avatar className="w-9 h-9 ring-2 ring-white/30">
               <AvatarImage src={profile?.avatar_url ?? undefined} />
               <AvatarFallback className="bg-white/20 text-white text-sm font-bold">{initials}</AvatarFallback>
             </Avatar>
+            <div>
+              <p className="text-white/60 text-[11px] leading-none mb-0.5">Welcome back</p>
+              <p className="text-white font-semibold text-sm leading-none truncate max-w-[120px]">{profile?.full_name?.split(' ')[0] ?? 'there'}</p>
+            </div>
           </a>
           <a href="/notifications">
-            <div className="w-9 h-9 bg-white/15 rounded-full flex items-center justify-center">
+            <div className="w-9 h-9 bg-white/15 rounded-full flex items-center justify-center active:bg-white/25 transition-colors">
               <Bell className="w-4 h-4 text-white" />
             </div>
           </a>
         </div>
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-white/70 text-xs font-medium">{format(new Date(), 'MMMM yyyy')} Balance</span>
-          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', netMonth >= 0 ? 'bg-green-500/30 text-green-200' : 'bg-red-400/30 text-red-200')}>
-            {netMonth >= 0 ? '+' : ''}{formatCurrency(netMonth, currency)}
+        <div className="relative">
+          <span className="text-white/60 text-xs font-medium">{format(new Date(), 'MMMM yyyy')} Total Balance</span>
+          <p className="text-4xl font-bold tracking-tight mt-1 mb-1">
+            {isLoading ? <span className="opacity-50">—</span> : formatCurrency(data?.totalBalance ?? 0, currency)}
+          </p>
+          <span className={cn('inline-flex text-xs font-semibold px-2.5 py-1 rounded-full', netMonth >= 0 ? 'bg-green-500/25 text-green-200' : 'bg-red-400/25 text-red-200')}>
+            {netMonth >= 0 ? '▲' : '▼'} {netMonth >= 0 ? '+' : ''}{formatCurrency(netMonth, currency)} this month
           </span>
         </div>
-        <p className="text-4xl font-bold tracking-tight mt-1">
-          {isLoading ? '—' : formatCurrency(data?.totalBalance ?? 0, currency)}
-        </p>
 
-        <div className="flex gap-3 mt-5">
-          <div className="flex-1 bg-white/15 rounded-2xl px-4 py-3">
+        <div className="relative flex gap-3 mt-5">
+          <div className="flex-1 bg-white/12 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10">
             <div className="flex items-center gap-1.5 mb-1">
               <TrendingUp className="w-3 h-3 text-green-300" />
               <span className="text-white/60 text-[11px]">Income</span>
             </div>
             {isLoading
               ? <Skeleton className="h-5 w-20 bg-white/20" />
-              : <p className="text-white font-semibold text-sm">{formatCurrency(data?.monthlyIncome ?? 0, currency)}</p>
+              : <p className="text-white font-bold text-sm">{formatCurrency(data?.monthlyIncome ?? 0, currency)}</p>
             }
           </div>
-          <div className="flex-1 bg-white/15 rounded-2xl px-4 py-3">
+          <div className="flex-1 bg-white/12 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10">
             <div className="flex items-center gap-1.5 mb-1">
               <TrendingDown className="w-3 h-3 text-red-300" />
               <span className="text-white/60 text-[11px]">Expenses</span>
             </div>
             {isLoading
               ? <Skeleton className="h-5 w-20 bg-white/20" />
-              : <p className="text-white font-semibold text-sm">{formatCurrency(data?.monthlyExpenses ?? 0, currency)}</p>
+              : <p className="text-white font-bold text-sm">{formatCurrency(data?.monthlyExpenses ?? 0, currency)}</p>
             }
           </div>
         </div>
@@ -171,11 +178,13 @@ export function DashboardContent() {
       </button>
 
       <Sheet open={showAdd} onOpenChange={setShowAdd}>
-        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader className="pb-2">
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30">
             <SheetTitle>Add Transaction</SheetTitle>
           </SheetHeader>
-          <TransactionForm onSuccess={() => { setShowAdd(false); refetch() }} onCancel={() => setShowAdd(false)} />
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+            <TransactionForm onSuccess={() => { setShowAdd(false); refetch() }} onCancel={() => setShowAdd(false)} />
+          </div>
         </SheetContent>
       </Sheet>
     </div>

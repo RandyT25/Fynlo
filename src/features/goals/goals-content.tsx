@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, Target } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -29,6 +30,7 @@ export function GoalsContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editGoal, setEditGoal] = useState<Goal | null>(null)
+  const currency = useCurrency()
   const supabase = createClient()
 
   const fetchGoals = useCallback(async () => {
@@ -69,7 +71,7 @@ export function GoalsContent() {
         <div className="flex gap-3 mb-4">
           <div className="flex-1 bg-card rounded-2xl p-4 shadow-sm border border-border/50">
             <p className="text-xs text-muted-foreground mb-1">Total Saved</p>
-            <p className="text-xl font-bold">{formatCurrency(totalSaved)}</p>
+            <p className="text-xl font-bold">{formatCurrency(totalSaved, currency)}</p>
           </div>
           <div className="flex-1 bg-card rounded-2xl p-4 shadow-sm border border-border/50">
             <p className="text-xs text-muted-foreground mb-1">Fulfilled</p>
@@ -115,12 +117,12 @@ export function GoalsContent() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-sm">{formatCurrency(goal.target_amount)}</p>
+                  <p className="font-bold text-sm">{formatCurrency(goal.target_amount, currency)}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm mb-2">
-                <span className="font-semibold" style={{ color: goal.color }}>{formatCurrency(goal.current_amount)}</span>
-                <span className="text-muted-foreground text-xs">{formatCurrency(goal.target_amount)}</span>
+                <span className="font-semibold" style={{ color: goal.color }}>{formatCurrency(goal.current_amount, currency)}</span>
+                <span className="text-muted-foreground text-xs">{formatCurrency(goal.target_amount, currency)}</span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
@@ -146,13 +148,15 @@ export function GoalsContent() {
       </button>
 
       <Sheet open={showForm} onOpenChange={open => { setShowForm(open); if (!open) setEditGoal(null) }}>
-        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto rounded-t-3xl">
-          <SheetHeader className="pb-2"><SheetTitle>{editGoal ? 'Edit' : 'New'} Goal</SheetTitle></SheetHeader>
-          <GoalForm
-            goal={editGoal ?? undefined}
-            onSuccess={() => { setShowForm(false); setEditGoal(null); fetchGoals() }}
-            onCancel={() => { setShowForm(false); setEditGoal(null) }}
-          />
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>{editGoal ? 'Edit' : 'New'} Goal</SheetTitle></SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+            <GoalForm
+              goal={editGoal ?? undefined}
+              onSuccess={() => { setShowForm(false); setEditGoal(null); fetchGoals() }}
+              onCancel={() => { setShowForm(false); setEditGoal(null) }}
+            />
+          </div>
         </SheetContent>
       </Sheet>
     </div>
@@ -220,17 +224,35 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Target Amount</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
-            <Input type="number" step="0.01" className="pl-7" {...register('target_amount', { valueAsNumber: true })} />
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+            <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+              {currencySymbol}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.00"
+              className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              {...register('target_amount', { valueAsNumber: true })}
+            />
           </div>
           {errors.target_amount && <p className="text-xs text-destructive">{errors.target_amount.message}</p>}
         </div>
         <div className="space-y-2">
           <Label>Current Amount</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
-            <Input type="number" step="0.01" className="pl-7" {...register('current_amount', { valueAsNumber: true })} />
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+            <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+              {currencySymbol}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.00"
+              className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              {...register('current_amount', { valueAsNumber: true })}
+            />
           </div>
         </div>
       </div>
@@ -258,10 +280,10 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
         <Textarea placeholder="What is this goal for?" rows={2} {...register('description')} />
       </div>
 
-      <div className="flex gap-2 pt-2">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1">Cancel</Button>}
-        <Button type="submit" className="flex-1 gradient-primary border-0" disabled={isLoading}>
-          {isLoading ? 'Saving...' : goal ? 'Update Goal' : 'Create Goal'}
+      <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">Cancel</Button>}
+        <Button type="submit" className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold" disabled={isLoading}>
+          {isLoading ? 'Saving…' : goal ? 'Update Goal' : 'Create Goal'}
         </Button>
       </div>
     </form>
