@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
-  LogOut, ChevronRight, Check, DollarSign, Clock,
-  Moon, Bell, Pencil, ShieldAlert, Globe, Palette,
+  LogOut, ChevronRight, Check, DollarSign,
+  Bell, Pencil, ShieldAlert, Globe, Palette, Camera,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
@@ -56,17 +56,23 @@ function buildTimezones() {
 const ALL_TIMEZONES = buildTimezones()
 type ActiveSheet = 'profile' | 'currency' | 'timezone' | null
 
+const deviceTimezone = typeof Intl !== 'undefined'
+  ? Intl.DateTimeFormat().resolvedOptions().timeZone
+  : 'UTC'
+
 export function SettingsContent() {
   const { user, profile, signOut } = useAuth()
   const { setProfile } = useAuthStore()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [openSheet, setOpenSheet] = useState<ActiveSheet>(null)
   const [name, setName] = useState(profile?.full_name ?? '')
   const [currency, setCurrency] = useState(profile?.currency ?? 'USD')
-  const [timezone, setTimezone] = useState(profile?.timezone ?? 'UTC')
+  const [timezone, setTimezone] = useState(profile?.timezone ?? deviceTimezone)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -92,11 +98,34 @@ export function SettingsContent() {
     setOpenSheet(null)
   }
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); return }
+    setIsUploadingAvatar(true)
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/avatar.${ext}`
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (upErr) { toast.error(upErr.message); setIsUploadingAvatar(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    await save({ avatar_url: `${publicUrl}?t=${Date.now()}` })
+    setIsUploadingAvatar(false)
+  }
+
   return (
     <div className="pb-24">
 
+      {/* Hidden file input for avatar upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleAvatarChange}
+      />
+
       {/* ── Hero profile banner ── */}
-      <div className="relative overflow-hidden gradient-primary px-6 pt-8 pb-10">
+      <div className="relative overflow-hidden gradient-primary px-6 pt-10 pb-16 rounded-b-[2.5rem]">
         {/* decorative orbs */}
         <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-xl pointer-events-none" />
         <div className="absolute -bottom-6 -left-6 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
@@ -104,29 +133,46 @@ export function SettingsContent() {
         <div className="relative flex flex-col items-center gap-3 text-center">
           {/* Avatar ring */}
           <div className="relative">
-            <div className="w-24 h-24 rounded-full ring-4 ring-white/30 bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-xl">
-              <span className="text-3xl font-black text-white tracking-tight">{initials}</span>
+            <div className="w-24 h-24 rounded-full ring-4 ring-white/30 bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-xl overflow-hidden">
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                : <span className="text-3xl font-black text-white tracking-tight">{initials}</span>
+              }
             </div>
+            {/* Camera / upload button */}
             <button
-              onClick={() => { setName(profile?.full_name ?? ''); setOpenSheet('profile') }}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingAvatar}
               className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
-              aria-label="Edit name"
+              aria-label="Upload photo"
             >
-              <Pencil className="w-3.5 h-3.5 text-gray-700" />
+              {isUploadingAvatar
+                ? <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                : <Camera className="w-3.5 h-3.5 text-gray-700" />
+              }
             </button>
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-white leading-tight">
-              {displayName ?? <span className="text-white/50 text-base font-medium italic">Add your name</span>}
-            </h2>
+            <div className="flex items-center gap-2 justify-center">
+              <h2 className="text-xl font-bold text-white leading-tight">
+                {displayName ?? <span className="text-white/50 text-base font-medium italic">Add your name</span>}
+              </h2>
+              <button
+                onClick={() => { setName(profile?.full_name ?? ''); setOpenSheet('profile') }}
+                className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center active:bg-white/30 transition-colors cursor-pointer"
+                aria-label="Edit name"
+              >
+                <Pencil className="w-3 h-3 text-white" />
+              </button>
+            </div>
             <p className="text-sm text-white/60 mt-0.5">{user?.email}</p>
           </div>
         </div>
       </div>
 
       {/* ── Content ── */}
-      <div className="px-4 -mt-4 space-y-3">
+      <div className="px-4 mt-5 space-y-3">
 
         {/* Preferences */}
         <Card>

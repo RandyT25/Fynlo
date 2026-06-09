@@ -110,7 +110,7 @@ export function WishlistContent() {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState icon={ShoppingCart} title="Your wishlist is empty" description="Add things you want to save for and track your progress" action={{ label: 'Add Item', onClick: () => setShowForm(true) }} />
+        <EmptyState icon={ShoppingCart} title="Your wishlist is empty" description="Tap 'Add Item' above to start saving for something" />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((item, i) => {

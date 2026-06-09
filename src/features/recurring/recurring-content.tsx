@@ -77,7 +77,7 @@ export function RecurringContent() {
       </div>
 
       {recurrings.length === 0 ? (
-        <EmptyState icon={Repeat2} title="No recurring transactions" description="Set up automatic recurring income and expenses" action={{ label: 'Add Recurring', onClick: () => setShowForm(true) }} />
+        <EmptyState icon={Repeat2} title="No recurring transactions" description="Tap 'Add Recurring' above to set up auto-entries" />
       ) : (
         <div className="space-y-2">
           {recurrings.map((r, i) => (

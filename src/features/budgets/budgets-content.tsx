@@ -110,7 +110,7 @@ export function BudgetsContent() {
       )}
 
       {budgets.length === 0 ? (
-        <EmptyState icon={PiggyBank} title="No budgets yet" description="Create budgets to track your spending" action={{ label: 'Create Budget', onClick: () => setShowForm(true) }} />
+        <EmptyState icon={PiggyBank} title="No budgets yet" description="Tap + to create your first budget" />
       ) : (
         <div className="space-y-3">
           {budgets.map((budget, i) => {

@@ -94,7 +94,7 @@ export function GoalsContent() {
       )}
 
       {goals.length === 0 ? (
-        <EmptyState icon={Target} title="No goals yet" description="Set financial goals and track your progress" action={{ label: 'Create Goal', onClick: () => setShowForm(true) }} />
+        <EmptyState icon={Target} title="No goals yet" description="Tap + to set your first financial goal" />
       ) : (
         <div className="space-y-3">
           {displayGoals.map((goal, i) => (

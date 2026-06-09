@@ -108,7 +108,7 @@ export function TasksContent() {
       </div>
 
       {tasks.length === 0 ? (
-        <EmptyState icon={ListChecks} title="No tasks" description="Create financial tasks and reminders" action={{ label: 'Add Task', onClick: () => setShowForm(true) }} />
+        <EmptyState icon={ListChecks} title="No tasks" description="Tap 'Add Task' above to create a reminder" />
       ) : (
         <>
           {pending.length > 0 && (

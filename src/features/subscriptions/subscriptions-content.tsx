@@ -89,7 +89,7 @@ export function SubscriptionsContent() {
       </div>
 
       {subscriptions.length === 0 ? (
-        <EmptyState icon={CreditCard} title="No subscriptions" description="Track your recurring charges and services" action={{ label: 'Add Subscription', onClick: () => setShowForm(true) }} />
+        <EmptyState icon={CreditCard} title="No subscriptions" description="Tap + to track your recurring charges" />
       ) : (
         <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
           {subscriptions.map((sub, i) => {

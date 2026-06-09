@@ -133,12 +133,12 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
 
       <div className="space-y-2">
         <Label>Color</Label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {COLORS.map(c => (
             <button
               key={c}
               type="button"
-              className={`w-8 h-8 rounded-full transition-transform ${color === c ? 'scale-125 ring-2 ring-offset-2 ring-primary' : ''}`}
+              className={`w-6 h-6 rounded-full transition-all shrink-0 ${color === c ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'opacity-80 hover:opacity-100'}`}
               style={{ backgroundColor: c }}
               onClick={() => setValue('color', c)}
             />
