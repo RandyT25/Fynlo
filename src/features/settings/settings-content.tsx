@@ -70,7 +70,9 @@ export function SettingsContent() {
   const [openSheet, setOpenSheet] = useState<ActiveSheet>(null)
   const [name, setName] = useState(profile?.full_name ?? '')
   const [currency, setCurrency] = useState(profile?.currency ?? 'USD')
-  const [timezone, setTimezone] = useState(profile?.timezone ?? deviceTimezone)
+  const [timezone, setTimezone] = useState(
+    (profile?.timezone && profile.timezone !== 'UTC') ? profile.timezone : deviceTimezone
+  )
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
