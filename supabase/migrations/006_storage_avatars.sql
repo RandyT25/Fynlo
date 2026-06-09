@@ -1,18 +1,11 @@
--- Create the avatars storage bucket (public so URLs work without auth)
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'avatars',
-  'avatars',
-  true,
-  5242880,  -- 5 MB
-  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-)
+-- Create the avatars storage bucket (public, 5 MB limit, no MIME restriction)
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('avatars', 'avatars', true, 5242880)
 ON CONFLICT (id) DO UPDATE
   SET public = true,
-      file_size_limit = 5242880,
-      allowed_mime_types = ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      file_size_limit = 5242880;
 
--- Allow authenticated users to upload/update to their own folder (userId/avatar.ext)
+-- Allow authenticated users to upload to their own folder (userId/avatar.ext)
 CREATE POLICY "Users can upload own avatar"
   ON storage.objects FOR INSERT
   TO authenticated
@@ -21,6 +14,7 @@ CREATE POLICY "Users can upload own avatar"
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- Allow authenticated users to overwrite/update their own avatar
 CREATE POLICY "Users can update own avatar"
   ON storage.objects FOR UPDATE
   TO authenticated
@@ -29,6 +23,7 @@ CREATE POLICY "Users can update own avatar"
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- Allow authenticated users to delete their own avatar
 CREATE POLICY "Users can delete own avatar"
   ON storage.objects FOR DELETE
   TO authenticated
@@ -37,7 +32,7 @@ CREATE POLICY "Users can delete own avatar"
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
 
--- Allow anyone to read avatars (bucket is public, but policy still needed)
+-- Allow anyone to read avatars (needed for public URLs to work)
 CREATE POLICY "Avatars are publicly readable"
   ON storage.objects FOR SELECT
   TO public
