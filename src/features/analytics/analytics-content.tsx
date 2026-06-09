@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
+import { TrendingUp } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, getCurrencySymbol } from '@/lib/utils/format'
+import { useCurrency } from '@/hooks/use-currency'
 import { CHART_COLORS } from '@/lib/utils/colors'
 import { format, subMonths, subDays, startOfMonth, endOfMonth } from 'date-fns'
 import { useTheme } from 'next-themes'
@@ -27,6 +29,7 @@ export function AnalyticsContent() {
   const [range, setRange] = useState<TimeRange>('1M')
   const [data, setData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const currency = useCurrency()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const supabase = createClient()
@@ -101,7 +104,7 @@ export function AnalyticsContent() {
           <div key={i} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
             <span className="text-muted-foreground">{p.name}:</span>
-            <span className="font-medium">{formatCurrency(p.value)}</span>
+            <span className="font-medium">{formatCurrency(p.value, currency)}</span>
           </div>
         ))}
       </div>
@@ -116,7 +119,7 @@ export function AnalyticsContent() {
           <p className="text-xs text-muted-foreground mb-0.5">Account Balance</p>
           {isLoading
             ? <Skeleton className="h-5 w-24" />
-            : <p className="font-bold text-base">{formatCurrency((data?.chartData?.at(-1)?.balance) ?? 0)}</p>
+            : <p className="font-bold text-base">{formatCurrency((data?.chartData?.at(-1)?.balance) ?? 0, currency)}</p>
           }
         </div>
         <div className="bg-muted/50 rounded-2xl px-4 py-3">
@@ -124,7 +127,7 @@ export function AnalyticsContent() {
           {isLoading
             ? <Skeleton className="h-5 w-24" />
             : <p className={cn('font-bold text-base', (data?.periodBalance ?? 0) >= 0 ? 'text-green-500' : 'text-destructive')}>
-                {(data?.periodBalance ?? 0) >= 0 ? '+' : ''}{formatCurrency(data?.periodBalance ?? 0)}
+                {(data?.periodBalance ?? 0) >= 0 ? '+' : ''}{formatCurrency(data?.periodBalance ?? 0, currency)}
               </p>
           }
         </div>
@@ -152,6 +155,14 @@ export function AnalyticsContent() {
       <div className="bg-card rounded-3xl p-4 border border-border">
         {isLoading ? (
           <Skeleton className="h-[180px] w-full rounded-xl" />
+        ) : (data?.chartData ?? []).length === 0 ? (
+          <div className="h-[180px] flex flex-col items-center justify-center gap-2 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-muted-foreground/50" />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">No data for this period</p>
+            <p className="text-xs text-muted-foreground/60">Add transactions to see your chart</p>
+          </div>
         ) : (
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={data?.chartData ?? []}>
@@ -163,13 +174,14 @@ export function AnalyticsContent() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis dataKey="month" tick={axisStyle} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={v => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} width={40} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={v => { const sym = getCurrencySymbol(currency); return `${sym}${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}` }} width={42} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="balance" name="Balance" stroke="#8B5CF6" strokeWidth={2.5} fill="url(#balanceGrad)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         )}
       </div>
+
 
       {/* Categories */}
       <div>
@@ -206,7 +218,7 @@ export function AnalyticsContent() {
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: cat.color }} />
                     </div>
                   </div>
-                  <p className="text-sm font-semibold shrink-0">{formatCurrency(cat.amount)}</p>
+                  <p className="text-sm font-semibold shrink-0">{formatCurrency(cat.amount, currency)}</p>
                 </div>
               )
             })}

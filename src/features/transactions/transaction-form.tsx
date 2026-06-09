@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { transactionSchema, type TransactionInput } from '@/lib/validations/transaction'
+import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -111,13 +112,16 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
       {/* Amount */}
       <div className="space-y-2">
         <Label>Amount</Label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">{currencySymbol}</span>
-          <Input
+        <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+          <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+            {currencySymbol}
+          </span>
+          <input
             type="number"
+            inputMode="decimal"
             step="0.01"
             placeholder="0.00"
-            className="pl-7 text-lg font-semibold"
+            className="flex-1 px-3 py-2 text-lg font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             {...register('amount', { valueAsNumber: true })}
           />
         </div>
@@ -129,7 +133,8 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
         <Label>Account</Label>
         {accounts.length === 0 ? (
           <a href="/accounts" className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-sm text-amber-700 dark:text-amber-400">
-            ⚠️ No accounts yet — tap here to add one first
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            No accounts yet — tap here to add one first
           </a>
         ) : (
           <Select onValueChange={(v: string | null) => setValue('account_id', v as any)} defaultValue={transaction?.account_id}>

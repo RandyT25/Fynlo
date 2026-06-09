@@ -37,7 +37,7 @@ export function FamilyContent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setIsLoading(false); return }
 
-    const { data: memberData } = await supabase.from('family_members').select('*, family:families(*)').eq('user_id', user.id).eq('status', 'active').single()
+    const { data: memberData } = await supabase.from('family_members').select('*, family:families(*)').eq('user_id', user.id).eq('status', 'active').maybeSingle()
 
     if (memberData?.family) {
       setFamily((memberData as any).family)

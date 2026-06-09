@@ -2,10 +2,20 @@ import { format, formatDistanceToNow, parseISO, isToday, isYesterday } from 'dat
 
 export function getCurrencySymbol(currency = 'USD'): string {
   try {
-    const parts = new Intl.NumberFormat('en', { style: 'currency', currency }).formatToParts(1)
+    // narrowSymbol gives "Rp" for IDR, "¥" for JPY etc. — avoids "IDR0.00" run-together
+    const parts = new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency,
+      currencyDisplay: 'narrowSymbol',
+    }).formatToParts(1)
     return parts.find(p => p.type === 'currency')?.value ?? currency
   } catch {
-    return currency
+    try {
+      const parts = new Intl.NumberFormat('en', { style: 'currency', currency }).formatToParts(1)
+      return parts.find(p => p.type === 'currency')?.value ?? currency
+    } catch {
+      return currency
+    }
   }
 }
 

@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { LogOut, ChevronRight, Trash2, Check } from 'lucide-react'
+import {
+  LogOut, ChevronRight, Check, DollarSign, Clock,
+  Moon, Bell, Pencil, ShieldAlert, Globe, Palette,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { useAuth } from '@/hooks/use-auth'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useAuthStore } from '@/store/auth.store'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,35 +18,32 @@ import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 
 const CURRENCIES = [
-  { code: 'USD', label: 'US Dollar' },
-  { code: 'EUR', label: 'Euro' },
-  { code: 'GBP', label: 'British Pound' },
-  { code: 'AUD', label: 'Australian Dollar' },
-  { code: 'CAD', label: 'Canadian Dollar' },
-  { code: 'SGD', label: 'Singapore Dollar' },
-  { code: 'JPY', label: 'Japanese Yen' },
-  { code: 'IDR', label: 'Indonesian Rupiah' },
-  { code: 'MYR', label: 'Malaysian Ringgit' },
-  { code: 'THB', label: 'Thai Baht' },
-  { code: 'HKD', label: 'Hong Kong Dollar' },
-  { code: 'KRW', label: 'South Korean Won' },
-  { code: 'CNY', label: 'Chinese Yuan' },
-  { code: 'INR', label: 'Indian Rupee' },
-  { code: 'BRL', label: 'Brazilian Real' },
-  { code: 'MXN', label: 'Mexican Peso' },
+  { code: 'USD', label: 'US Dollar',           flag: '🇺🇸' },
+  { code: 'EUR', label: 'Euro',                flag: '🇪🇺' },
+  { code: 'GBP', label: 'British Pound',       flag: '🇬🇧' },
+  { code: 'AUD', label: 'Australian Dollar',   flag: '🇦🇺' },
+  { code: 'CAD', label: 'Canadian Dollar',     flag: '🇨🇦' },
+  { code: 'SGD', label: 'Singapore Dollar',    flag: '🇸🇬' },
+  { code: 'JPY', label: 'Japanese Yen',        flag: '🇯🇵' },
+  { code: 'IDR', label: 'Indonesian Rupiah',   flag: '🇮🇩' },
+  { code: 'MYR', label: 'Malaysian Ringgit',   flag: '🇲🇾' },
+  { code: 'THB', label: 'Thai Baht',           flag: '🇹🇭' },
+  { code: 'HKD', label: 'Hong Kong Dollar',    flag: '🇭🇰' },
+  { code: 'KRW', label: 'South Korean Won',    flag: '🇰🇷' },
+  { code: 'CNY', label: 'Chinese Yuan',        flag: '🇨🇳' },
+  { code: 'INR', label: 'Indian Rupee',        flag: '🇮🇳' },
+  { code: 'BRL', label: 'Brazilian Real',      flag: '🇧🇷' },
+  { code: 'MXN', label: 'Mexican Peso',        flag: '🇲🇽' },
 ]
 
-// Full IANA timezone list with UTC offset labels
 function buildTimezones() {
   try {
-    const zones = Intl.supportedValuesOf('timeZone')
-    return zones.map(tz => {
+    return Intl.supportedValuesOf('timeZone').map(tz => {
       try {
         const offset = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'shortOffset' })
-          .formatToParts(new Date())
-          .find(p => p.type === 'timeZoneName')?.value ?? ''
+          .formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value ?? ''
         const city = tz.split('/').pop()?.replace(/_/g, ' ') ?? tz
-        return { value: tz, label: `${city}`, offset }
+        return { value: tz, label: city, offset }
       } catch {
         return { value: tz, label: tz, offset: '' }
       }
@@ -54,166 +54,244 @@ function buildTimezones() {
 }
 
 const ALL_TIMEZONES = buildTimezones()
-
-type Sheet = 'profile' | 'currency' | 'timezone' | null
+type ActiveSheet = 'profile' | 'currency' | 'timezone' | null
 
 export function SettingsContent() {
   const { user, profile, signOut } = useAuth()
+  const { setProfile } = useAuthStore()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
 
-  const [openSheet, setOpenSheet] = useState<Sheet>(null)
+  const [openSheet, setOpenSheet] = useState<ActiveSheet>(null)
   const [name, setName] = useState(profile?.full_name ?? '')
   const [currency, setCurrency] = useState(profile?.currency ?? 'USD')
   const [timezone, setTimezone] = useState(profile?.timezone ?? 'UTC')
   const [isSaving, setIsSaving] = useState(false)
 
   const initials = profile?.full_name
-    ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : profile?.email?.[0]?.toUpperCase() ?? 'U'
 
-  const save = async (fields: Record<string, string>) => {
+  const displayName = profile?.full_name || null
+  const notificationsEnabled = profile?.notifications_enabled ?? true
+  const selectedCurrency = CURRENCIES.find(c => c.code === currency)
+
+  const save = async (fields: Record<string, unknown>) => {
     setIsSaving(true)
-    const { error } = await supabase.from('profiles').update(fields).eq('id', user!.id)
-    if (error) toast.error(error.message)
-    else toast.success('Saved')
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ id: user!.id, email: user!.email!, ...fields })
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success('Saved')
+      const base = profile ?? { id: user!.id, email: user!.email! }
+      setProfile({ ...base, ...fields } as any)
+    }
     setIsSaving(false)
     setOpenSheet(null)
   }
 
-  const currencyLabel = CURRENCIES.find(c => c.code === currency)?.code ?? currency
-  const timezoneLabel = ALL_TIMEZONES.find(t => t.value === timezone)?.label ?? timezone
-
   return (
-    <div className="px-4 pt-4 pb-8 space-y-5">
+    <div className="pb-24">
 
-      {/* Profile */}
-      <div
-        className="flex items-center gap-4 p-4 bg-card rounded-3xl shadow-sm border border-border/50 active:bg-muted/50 cursor-pointer"
-        onClick={() => setOpenSheet('profile')}
-      >
-        <Avatar className="w-14 h-14 shrink-0">
-          <AvatarImage src={profile?.avatar_url ?? undefined} />
-          <AvatarFallback className="gradient-primary text-white text-lg font-bold">{initials}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold truncate">{profile?.full_name ?? 'Your Name'}</p>
-          <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+      {/* ── Hero profile banner ── */}
+      <div className="relative overflow-hidden gradient-primary px-6 pt-8 pb-10">
+        {/* decorative orbs */}
+        <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-xl pointer-events-none" />
+        <div className="absolute -bottom-6 -left-6 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
+
+        <div className="relative flex flex-col items-center gap-3 text-center">
+          {/* Avatar ring */}
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full ring-4 ring-white/30 bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-xl">
+              <span className="text-3xl font-black text-white tracking-tight">{initials}</span>
+            </div>
+            <button
+              onClick={() => { setName(profile?.full_name ?? ''); setOpenSheet('profile') }}
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
+              aria-label="Edit name"
+            >
+              <Pencil className="w-3.5 h-3.5 text-gray-700" />
+            </button>
+          </div>
+
+          <div>
+            <h2 className="text-xl font-bold text-white leading-tight">
+              {displayName ?? <span className="text-white/50 text-base font-medium italic">Add your name</span>}
+            </h2>
+            <p className="text-sm text-white/60 mt-0.5">{user?.email}</p>
+          </div>
         </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
       </div>
 
-      {/* Preferences */}
-      <Section title="Preferences">
-        <Row label="Currency" value={currencyLabel} onPress={() => setOpenSheet('currency')} />
-        <Row label="Timezone" value={timezoneLabel} onPress={() => setOpenSheet('timezone')} />
-      </Section>
+      {/* ── Content ── */}
+      <div className="px-4 -mt-4 space-y-3">
 
-      {/* Appearance */}
-      <Section title="Appearance">
-        <div className="flex items-center px-4 py-4">
-          <span className="flex-1 text-sm font-medium">Theme</span>
-          <div className="flex gap-1.5">
-            {(['light', 'dark', 'system'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setTheme(t)}
-                className={cn(
-                  'px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all',
-                  theme === t ? 'gradient-primary text-white' : 'bg-muted text-muted-foreground'
-                )}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Section>
+        {/* Preferences */}
+        <Card>
+          <SectionLabel>Preferences</SectionLabel>
+          <Row
+            icon={<DollarSign className="w-[18px] h-[18px]" />}
+            iconClass="bg-blue-500 text-white"
+            label="Currency"
+            value={`${selectedCurrency?.flag ?? ''} ${currency}`}
+            onPress={() => setOpenSheet('currency')}
+          />
+          <Row
+            icon={<Globe className="w-[18px] h-[18px]" />}
+            iconClass="bg-violet-500 text-white"
+            label="Timezone"
+            value={ALL_TIMEZONES.find(t => t.value === timezone)?.label ?? timezone}
+            onPress={() => setOpenSheet('timezone')}
+            border
+          />
+        </Card>
 
-      {/* Notifications */}
-      <Section title="Notifications">
-        {[
-          { label: 'Push Notifications', desc: 'Alerts on your device' },
-          { label: 'Email Notifications', desc: 'Alerts via email' },
-          { label: 'Bill Reminders', desc: 'Upcoming bills' },
-          { label: 'Budget Alerts', desc: 'When limit exceeded' },
-          { label: 'Goal Milestones', desc: 'Celebrate your progress' },
-        ].map((item, i) => (
-          <div key={i} className={cn('flex items-center px-4 py-3.5', i > 0 && 'border-t border-border/40')}>
-            <div className="flex-1">
-              <p className="text-sm font-medium">{item.label}</p>
-              <p className="text-xs text-muted-foreground">{item.desc}</p>
+        {/* Appearance */}
+        <Card>
+          <SectionLabel>Appearance</SectionLabel>
+          <div className="flex items-center px-4 py-3.5 gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Palette className="w-[18px] h-[18px]" />
             </div>
-            <Switch defaultChecked />
+            <span className="flex-1 text-sm font-semibold">Theme</span>
+            <div className="flex gap-1 bg-muted/80 rounded-xl p-1">
+              {(['light', 'dark', 'system'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTheme(t)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-[11px] font-bold capitalize transition-all cursor-pointer',
+                    theme === t
+                      ? 'gradient-primary text-white shadow-sm'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  {t === 'system' ? 'Auto' : t}
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
-      </Section>
+        </Card>
 
-      {/* Account */}
-      <Section title="Account">
-        <button className="flex items-center px-4 py-4 w-full text-left active:bg-muted/50" onClick={signOut}>
-          <LogOut className="w-5 h-5 text-destructive mr-3" />
-          <span className="text-sm font-medium text-destructive">Sign Out</span>
-        </button>
-        <button
-          className="flex items-center px-4 py-4 w-full text-left border-t border-border/40 active:bg-muted/50"
-          onClick={() => toast.error('Contact support to delete your account')}
-        >
-          <Trash2 className="w-5 h-5 text-destructive mr-3" />
-          <span className="text-sm font-medium text-destructive">Delete Account</span>
-        </button>
-      </Section>
+        {/* Notifications */}
+        <Card>
+          <SectionLabel>Notifications</SectionLabel>
+          <div className="flex items-center px-4 py-3.5 gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Bell className="w-[18px] h-[18px]" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">All Notifications</p>
+              <p className="text-xs text-muted-foreground">Bills, budgets &amp; goal alerts</p>
+            </div>
+            <Switch
+              checked={notificationsEnabled}
+              onCheckedChange={val => save({ notifications_enabled: val })}
+              className="data-[state=checked]:bg-rose-500"
+            />
+          </div>
+        </Card>
 
-      {/* Edit Name */}
+        {/* Account */}
+        <Card>
+          <SectionLabel>Account</SectionLabel>
+          <button
+            className="flex items-center px-4 py-3.5 w-full gap-3 active:bg-destructive/5 transition-colors cursor-pointer"
+            onClick={signOut}
+          >
+            <div className="w-9 h-9 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0">
+              <LogOut className="w-[18px] h-[18px]" />
+            </div>
+            <span className="text-sm font-semibold text-destructive">Sign Out</span>
+          </button>
+          <button
+            className="flex items-center px-4 py-3.5 w-full gap-3 border-t border-border/40 active:bg-destructive/5 transition-colors cursor-pointer"
+            onClick={() => toast.error('Contact support to delete your account')}
+          >
+            <div className="w-9 h-9 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0">
+              <ShieldAlert className="w-[18px] h-[18px]" />
+            </div>
+            <span className="text-sm font-semibold text-destructive">Delete Account</span>
+          </button>
+        </Card>
+
+        <p className="text-center text-xs text-muted-foreground/40 pt-2 pb-1">Fynlo · v1.0.0</p>
+      </div>
+
+      {/* ── Edit Name Sheet ── */}
       <Sheet open={openSheet === 'profile'} onOpenChange={o => !o && setOpenSheet(null)}>
         <SheetContent side="bottom" className="h-auto rounded-t-3xl pb-8">
-          <SheetHeader className="pb-4"><SheetTitle>Edit Profile</SheetTitle></SheetHeader>
-          <div className="space-y-4">
+          <SheetHeader className="pb-5">
+            <SheetTitle>Edit Name</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 px-1">
             <div className="space-y-2">
-              <Label>Full Name</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className="rounded-2xl" />
+              <Label className="text-sm font-semibold">Full Name</Label>
+              <Input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Your name"
+                className="rounded-2xl h-12 text-base"
+              />
             </div>
-            <Button className="w-full gradient-primary border-0 rounded-2xl h-12" onClick={() => save({ full_name: name })} disabled={isSaving}>
-              {isSaving ? 'Saving…' : 'Save Changes'}
+            <Button
+              className="w-full gradient-primary border-0 rounded-2xl h-12 font-bold text-base"
+              onClick={() => save({ full_name: name })}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving…' : 'Save'}
             </Button>
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* Currency picker */}
+      {/* ── Currency Sheet ── */}
       <Sheet open={openSheet === 'currency'} onOpenChange={o => !o && setOpenSheet(null)}>
-        <SheetContent side="bottom" className="h-[70dvh] rounded-t-3xl">
-          <SheetHeader className="pb-4"><SheetTitle>Default Currency</SheetTitle></SheetHeader>
-          <div className="overflow-y-auto space-y-1 pb-4">
+        <SheetContent side="bottom" className="h-[72dvh] rounded-t-3xl flex flex-col">
+          <SheetHeader className="pb-4 shrink-0">
+            <SheetTitle>Currency</SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto flex-1 space-y-1 pb-4 px-1">
             {CURRENCIES.map(c => (
               <button
                 key={c.code}
                 className={cn(
-                  'flex items-center w-full px-4 py-3.5 rounded-2xl text-left transition-colors',
-                  currency === c.code ? 'bg-primary/10' : 'active:bg-muted/50'
+                  'flex items-center w-full px-4 py-3.5 rounded-2xl text-left transition-colors cursor-pointer gap-3',
+                  currency === c.code
+                    ? 'bg-primary/10 ring-1 ring-primary/30'
+                    : 'active:bg-muted/60'
                 )}
                 onClick={() => { setCurrency(c.code); save({ currency: c.code }) }}
               >
-                <span className="font-semibold text-sm w-12">{c.code}</span>
-                <span className="flex-1 text-sm text-muted-foreground">{c.label}</span>
-                {currency === c.code && <Check className="w-4 h-4 text-primary" />}
+                <span className="text-xl leading-none">{c.flag}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{c.code}</p>
+                  <p className="text-xs text-muted-foreground truncate">{c.label}</p>
+                </div>
+                {currency === c.code && <Check className="w-4 h-4 text-primary shrink-0" />}
               </button>
             ))}
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* Timezone picker */}
+      {/* ── Timezone Sheet ── */}
       <Sheet open={openSheet === 'timezone'} onOpenChange={o => !o && setOpenSheet(null)}>
-        <SheetContent side="bottom" className="h-[70dvh] rounded-t-3xl">
-          <SheetHeader className="pb-4"><SheetTitle>Timezone</SheetTitle></SheetHeader>
-          <div className="overflow-y-auto space-y-1 pb-4">
+        <SheetContent side="bottom" className="h-[72dvh] rounded-t-3xl flex flex-col">
+          <SheetHeader className="pb-4 shrink-0">
+            <SheetTitle>Timezone</SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto flex-1 space-y-1 pb-4 px-1">
             {ALL_TIMEZONES.map(tz => (
               <button
                 key={tz.value}
                 className={cn(
-                  'flex items-center w-full px-4 py-3 rounded-2xl text-left transition-colors',
-                  timezone === tz.value ? 'bg-primary/10' : 'active:bg-muted/50'
+                  'flex items-center w-full px-4 py-3 rounded-2xl text-left transition-colors cursor-pointer',
+                  timezone === tz.value
+                    ? 'bg-primary/10 ring-1 ring-primary/30'
+                    : 'active:bg-muted/60'
                 )}
                 onClick={() => { setTimezone(tz.value); save({ timezone: tz.value }) }}
               >
@@ -229,26 +307,46 @@ export function SettingsContent() {
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">{title}</p>
-      <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
-        {children}
-      </div>
+    <div className="bg-card rounded-3xl overflow-hidden border border-border/60 shadow-sm">
+      {children}
     </div>
   )
 }
 
-function Row({ label, value, onPress }: { label: string; value?: string; onPress?: () => void }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+      {children}
+    </p>
+  )
+}
+
+function Row({
+  icon, iconClass, label, value, onPress, border,
+}: {
+  icon: React.ReactNode
+  iconClass: string
+  label: string
+  value?: string
+  onPress?: () => void
+  border?: boolean
+}) {
   return (
     <button
-      className="flex items-center px-4 py-4 w-full text-left border-t border-border/40 first:border-0 active:bg-muted/50 transition-colors"
+      className={cn(
+        'flex items-center px-4 py-3.5 w-full text-left active:bg-muted/40 transition-colors cursor-pointer gap-3',
+        border && 'border-t border-border/40'
+      )}
       onClick={onPress}
     >
-      <span className="flex-1 text-sm font-medium">{label}</span>
-      {value && <span className="text-sm text-muted-foreground mr-2">{value}</span>}
-      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+      <div className={cn('w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-sm', iconClass)}>
+        {icon}
+      </div>
+      <span className="flex-1 text-sm font-semibold">{label}</span>
+      {value && <span className="text-sm text-muted-foreground max-w-[120px] truncate">{value}</span>}
+      <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
     </button>
   )
 }

@@ -19,8 +19,27 @@ export function useAuth() {
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
-          .single()
-        setProfile(profileData)
+          .maybeSingle()
+
+        if (!profileData) {
+          // No profile row yet — create it (user predates the signup trigger)
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({ id: session.user.id, email: session.user.email ?? session.user.id })
+          if (!upsertError) {
+            const { data: created } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .maybeSingle()
+            setProfile(created)
+          } else {
+            // Upsert blocked — set a minimal in-memory profile to unblock the UI
+            setProfile({ id: session.user.id, email: session.user.email ?? '' } as any)
+          }
+        } else {
+          setProfile(profileData)
+        }
       } else {
         setProfile(null)
       }

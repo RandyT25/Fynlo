@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useAuth } from '@/hooks/use-auth'
 import { useCurrency } from '@/hooks/use-currency'
@@ -44,12 +43,8 @@ export function TransactionsContent() {
   const [showAdd, setShowAdd] = useState(false)
   const [editTxn, setEditTxn] = useState<TransactionWithRelations | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { profile } = useAuth()
+  useAuth()
   const currency = useCurrency()
-
-  const initials = profile?.full_name
-    ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : profile?.email?.[0]?.toUpperCase() ?? 'U'
 
   const dateFrom = format(startOfMonth(currentMonth), 'yyyy-MM-dd')
   const dateTo = format(endOfMonth(currentMonth), 'yyyy-MM-dd')
@@ -81,11 +76,7 @@ export function TransactionsContent() {
       {/* Header */}
       <div className="bg-background px-4 pt-4 pb-1 sticky top-0 z-20 border-b border-border/50">
         <div className="flex items-center gap-3 mb-4">
-          <a href="/settings">
-            <Avatar className="w-9 h-9 shrink-0">
-              <AvatarFallback className="gradient-primary text-white text-sm font-bold">{initials}</AvatarFallback>
-            </Avatar>
-          </a>
+          <div className="w-9 shrink-0" />
           <div className="flex-1 text-center">
             <p className="text-xs text-muted-foreground">{format(currentMonth, 'MMMM yyyy')} Balance</p>
             <p className={cn('text-2xl font-bold leading-tight', netBalance >= 0 ? 'text-green-500' : 'text-destructive')}>
