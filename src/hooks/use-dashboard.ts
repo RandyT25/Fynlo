@@ -46,7 +46,7 @@ export function useDashboard() {
       { data: bills },
     ] = await Promise.all([
       supabase.from('accounts').select('*').is('deleted_at', null).eq('is_active', true),
-      supabase.from('transactions').select('*, account:accounts(id,name,color,icon,type), category:categories(id,name,icon,color)').is('deleted_at', null).order('date', { ascending: false }).limit(10),
+      supabase.from('transactions').select('*, account:accounts!account_id(id,name,color,icon,type), category:categories!category_id(id,name,icon,color)').is('deleted_at', null).order('date', { ascending: false }).limit(10),
       supabase.from('transactions').select('type,amount').is('deleted_at', null).gte('date', monthStart).lte('date', monthEnd),
       supabase.from('budgets').select('*, category:categories(id,name,icon,color)').is('deleted_at', null).eq('is_active', true),
       supabase.from('goals').select('*').is('deleted_at', null).eq('is_completed', false).order('priority', { ascending: false }).limit(6),

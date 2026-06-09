@@ -28,7 +28,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
 
     let query = supabase
       .from('transactions')
-      .select('*, account:accounts(id,name,color,icon,type), to_account:accounts!to_account_id(id,name,color,icon,type), category:categories(id,name,icon,color,parent_id)', { count: 'exact' })
+      .select('*, account:accounts!account_id(id,name,color,icon,type), to_account:accounts!to_account_id(id,name,color,icon,type), category:categories!category_id(id,name,icon,color,parent_id)', { count: 'exact' })
       .is('deleted_at', null)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false })
