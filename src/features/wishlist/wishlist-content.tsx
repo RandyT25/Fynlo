@@ -1,30 +1,36 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, ShoppingCart, Target } from 'lucide-react'
+import { Plus, ShoppingCart, Target, Pencil } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
+import { useCurrency } from '@/hooks/use-currency'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingPage } from '@/components/shared/loading-spinner'
 import { formatCurrency, formatPercent } from '@/lib/utils/format'
 import type { WishlistItem } from '@/types/database'
 
+const EMPTY_FORM = { name: '', description: '', target_amount: '', current_amount: '0', url: '' }
+
 export function WishlistContent() {
   const [items, setItems] = useState<WishlistItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [newItem, setNewItem] = useState({ name: '', description: '', target_amount: '', current_amount: '0', url: '' })
+  const [editItem, setEditItem] = useState<WishlistItem | null>(null)
+  const [newItem, setNewItem] = useState(EMPTY_FORM)
+  const [editForm, setEditForm] = useState(EMPTY_FORM)
   const supabase = createClient()
   const currencySymbol = useCurrencySymbol()
+  const currency = useCurrency()
 
   const fetchItems = useCallback(async () => {
     setIsLoading(true)
@@ -50,7 +56,22 @@ export function WishlistContent() {
     if (error) { toast.error(error.message); return }
     toast.success('Item added to wishlist')
     setShowForm(false)
-    setNewItem({ name: '', description: '', target_amount: '', current_amount: '0', url: '' })
+    setNewItem(EMPTY_FORM)
+    fetchItems()
+  }
+
+  const updateItem = async () => {
+    if (!editItem || !editForm.name.trim()) return
+    const { error } = await supabase.from('wishlist').update({
+      name: editForm.name,
+      description: editForm.description || null,
+      target_amount: parseFloat(editForm.target_amount) || 0,
+      current_amount: parseFloat(editForm.current_amount) || 0,
+      url: editForm.url || null,
+    }).eq('id', editItem.id)
+    if (error) { toast.error(error.message); return }
+    toast.success('Item updated')
+    setEditItem(null)
     fetchItems()
   }
 
@@ -73,15 +94,24 @@ export function WishlistContent() {
     fetchItems()
   }
 
+  const openEdit = (item: WishlistItem) => {
+    setEditForm({
+      name: item.name,
+      description: item.description ?? '',
+      target_amount: String(item.target_amount),
+      current_amount: String(item.current_amount),
+      url: item.url ?? '',
+    })
+    setEditItem(item)
+  }
+
   if (isLoading) return <LoadingPage />
 
   return (
     <div className="px-4 pt-4 pb-4 space-y-4">
       <div className="flex justify-end">
         <Sheet open={showForm} onOpenChange={setShowForm}>
-          <SheetTrigger>
-            <Button className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Add Item</Button>
-          </SheetTrigger>
+          <Button className="gradient-primary border-0 gap-2" onClick={() => setShowForm(true)}><Plus className="w-4 h-4" /> Add Item</Button>
           <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
             <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>Add to Wishlist</SheetTitle></SheetHeader>
             <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-4">
@@ -123,6 +153,9 @@ export function WishlistContent() {
                     <div className="flex items-start justify-between">
                       <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">🛍️</div>
                       <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground" onClick={() => openEdit(item)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
                         {!isConverted && (
                           <Button variant="ghost" size="icon" className="w-7 h-7 text-purple-500" onClick={() => convertToGoal(item)} title="Convert to goal">
                             <Target className="w-4 h-4" />
@@ -137,8 +170,8 @@ export function WishlistContent() {
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-sm">
-                        <span className="text-primary font-bold">{formatCurrency(item.current_amount)}</span>
-                        <span className="text-muted-foreground">/ {formatCurrency(item.target_amount)}</span>
+                        <span className="text-primary font-bold">{formatCurrency(item.current_amount, currency)}</span>
+                        <span className="text-muted-foreground">/ {formatCurrency(item.target_amount, currency)}</span>
                       </div>
                       <Progress value={progress} className="h-2" />
                       <p className="text-xs text-muted-foreground text-right">{formatPercent(progress, 0)} saved</p>
@@ -151,6 +184,34 @@ export function WishlistContent() {
           })}
         </div>
       )}
+
+      {/* Edit Sheet */}
+      <Sheet open={!!editItem} onOpenChange={open => !open && setEditItem(null)}>
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>Edit Item</SheetTitle></SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-4">
+            <div className="space-y-2"><Label>Item Name</Label><Input placeholder="e.g., MacBook Pro" value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Target Price</Label>
+                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
+                  <Input type="number" className="pl-7" value={editForm.target_amount} onChange={e => setEditForm(p => ({ ...p, target_amount: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-2"><Label>Saved So Far</Label>
+                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
+                  <Input type="number" className="pl-7" value={editForm.current_amount} onChange={e => setEditForm(p => ({ ...p, current_amount: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2"><Label>URL (optional)</Label><Input placeholder="https://..." value={editForm.url} onChange={e => setEditForm(p => ({ ...p, url: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Notes</Label><Textarea rows={2} value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} /></div>
+            <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+              <Button variant="outline" onClick={() => setEditItem(null)} className="flex-1 h-12 rounded-2xl">Cancel</Button>
+              <Button onClick={updateItem} className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold">Save</Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

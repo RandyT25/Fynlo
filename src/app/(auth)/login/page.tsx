@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { loginSchema, type LoginInput } from '@/lib/validations/auth'
@@ -157,13 +157,17 @@ export default function LoginPage() {
           </Button>
         </CardContent>
 
-        <CardFooter className="justify-center">
+        <CardFooter className="flex-col gap-3">
           <p className="text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-primary font-medium hover:underline">
               Sign up
             </Link>
           </p>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>256-bit encrypted · Your data stays private</span>
+          </div>
         </CardFooter>
       </Card>
     </motion.div>

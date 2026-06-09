@@ -18,7 +18,7 @@ export function MobileNav() {
 
   return (
     <nav
-      className="fixed bottom-0 z-50 bg-background border-t border-border"
+      className="fixed bottom-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50"
       style={{
         left: '50%',
         transform: 'translateX(-50%)',
@@ -27,7 +27,7 @@ export function MobileNav() {
       }}
     >
       <div
-        className="flex items-center justify-around px-1 pt-2"
+        className="flex items-center justify-around px-2 pt-1.5"
         style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {TABS.map(tab => {
@@ -37,12 +37,19 @@ export function MobileNav() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                'flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors',
-                active ? 'text-primary' : 'text-muted-foreground'
+                'flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all duration-200 min-w-[3.5rem]',
+                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <tab.icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <div className={cn(
+                'w-10 h-8 flex items-center justify-center rounded-xl transition-all duration-200',
+                active ? 'bg-primary/12' : 'hover:bg-muted/60'
+              )}>
+                <tab.icon className={cn('transition-all duration-200', active ? 'w-5 h-5' : 'w-[1.15rem] h-[1.15rem]')} />
+              </div>
+              <span className={cn('text-[10px] font-semibold transition-colors duration-200', active ? 'text-primary' : 'text-muted-foreground')}>
+                {tab.label}
+              </span>
             </Link>
           )
         })}

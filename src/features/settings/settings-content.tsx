@@ -43,13 +43,14 @@ function buildTimezones() {
         const offset = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'shortOffset' })
           .formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value ?? ''
         const city = tz.split('/').pop()?.replace(/_/g, ' ') ?? tz
-        return { value: tz, label: city, offset }
+        const fullLabel = tz.replace(/_/g, ' ')
+        return { value: tz, label: city, fullLabel, offset }
       } catch {
-        return { value: tz, label: tz, offset: '' }
+        return { value: tz, label: tz, fullLabel: tz, offset: '' }
       }
     }).sort((a, b) => a.value.localeCompare(b.value))
   } catch {
-    return [{ value: 'UTC', label: 'UTC', offset: 'GMT+0' }]
+    return [{ value: 'UTC', label: 'UTC', fullLabel: 'UTC', offset: 'GMT+0' }]
   }
 }
 
@@ -75,6 +76,7 @@ export function SettingsContent() {
   )
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [tzSearch, setTzSearch] = useState('')
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -326,28 +328,45 @@ export function SettingsContent() {
       </Sheet>
 
       {/* ── Timezone Sheet ── */}
-      <Sheet open={openSheet === 'timezone'} onOpenChange={o => !o && setOpenSheet(null)}>
-        <SheetContent side="bottom" className="h-[72dvh] rounded-t-3xl flex flex-col">
-          <SheetHeader className="pb-4 shrink-0">
+      <Sheet open={openSheet === 'timezone'} onOpenChange={o => { if (!o) { setOpenSheet(null); setTzSearch('') } }}>
+        <SheetContent side="bottom" className="h-[85dvh] rounded-t-3xl flex flex-col">
+          <SheetHeader className="pb-3 shrink-0">
             <SheetTitle>Timezone</SheetTitle>
           </SheetHeader>
+          <div className="px-1 pb-3 shrink-0">
+            <Input
+              placeholder="Search timezone…"
+              value={tzSearch}
+              onChange={e => setTzSearch(e.target.value)}
+              className="rounded-2xl h-11"
+            />
+          </div>
           <div className="overflow-y-auto flex-1 space-y-1 pb-4 px-1">
-            {ALL_TIMEZONES.map(tz => (
-              <button
-                key={tz.value}
-                className={cn(
-                  'flex items-center w-full px-4 py-3 rounded-2xl text-left transition-colors cursor-pointer',
-                  timezone === tz.value
-                    ? 'bg-primary/10 ring-1 ring-primary/30'
-                    : 'active:bg-muted/60'
-                )}
-                onClick={() => { setTimezone(tz.value); save({ timezone: tz.value }) }}
-              >
-                <span className="flex-1 text-sm font-medium truncate">{tz.label}</span>
-                <span className="text-xs text-muted-foreground ml-2 shrink-0">{tz.offset}</span>
-                {timezone === tz.value && <Check className="w-4 h-4 text-primary ml-2 shrink-0" />}
-              </button>
-            ))}
+            {ALL_TIMEZONES
+              .filter(tz =>
+                !tzSearch ||
+                tz.value.toLowerCase().includes(tzSearch.toLowerCase()) ||
+                tz.label.toLowerCase().includes(tzSearch.toLowerCase())
+              )
+              .map(tz => (
+                <button
+                  key={tz.value}
+                  className={cn(
+                    'flex items-center w-full px-4 py-3 rounded-2xl text-left transition-colors cursor-pointer',
+                    timezone === tz.value
+                      ? 'bg-primary/10 ring-1 ring-primary/30'
+                      : 'active:bg-muted/60'
+                  )}
+                  onClick={() => { setTimezone(tz.value); save({ timezone: tz.value }); setTzSearch('') }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{tz.fullLabel}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground ml-3 shrink-0">{tz.offset}</span>
+                  {timezone === tz.value && <Check className="w-4 h-4 text-primary ml-2 shrink-0" />}
+                </button>
+              ))
+            }
           </div>
         </SheetContent>
       </Sheet>

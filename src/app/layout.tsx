@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { IBM_Plex_Sans } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/layout/providers'
 import { Toaster } from '@/components/ui/sonner'
 
-const inter = Inter({
+const ibmPlexSans = IBM_Plex_Sans({
   variable: '--font-sans',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
   preload: false,
 })
@@ -61,7 +62,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${ibmPlexSans.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full antialiased">
         <Providers>
           {children}

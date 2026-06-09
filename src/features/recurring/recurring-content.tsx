@@ -173,8 +173,18 @@ function RecurringForm({ onSuccess, onCancel }: RecurringFormProps) {
       </div>
       <div className="space-y-2">
         <Label>Amount</Label>
-        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
-          <Input type="number" step="0.01" className="pl-7" {...register('amount', { valueAsNumber: true })} />
+        <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+          <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+            {currencySymbol}
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            placeholder="0.00"
+            className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            {...register('amount', { valueAsNumber: true })}
+          />
         </div>
         {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
       </div>

@@ -264,10 +264,10 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
 
       <div className="space-y-2">
         <Label>Color</Label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {GOAL_COLORS.map(c => (
             <button key={c} type="button"
-              className={`w-8 h-8 rounded-full transition-transform ${color === c ? 'scale-125 ring-2 ring-offset-2 ring-primary' : ''}`}
+              className={`w-6 h-6 rounded-full transition-transform ${color === c ? 'scale-110 ring-2 ring-offset-2 ring-primary' : ''}`}
               style={{ backgroundColor: c }}
               onClick={() => setValue('color', c)}
             />

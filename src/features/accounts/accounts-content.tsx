@@ -68,8 +68,7 @@ export function AccountsContent() {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <p className="text-[11px] text-muted-foreground">Total Balance</p>
-              <p className="text-lg font-bold leading-tight">{formatCompactCurrency(totalBalance, currency)}</p>
-              <p className="text-[11px] text-muted-foreground">{currency}</p>
+              <p className="text-base font-bold leading-tight">{formatCompactCurrency(totalBalance, currency)}</p>
             </div>
           </div>
         ) : (
