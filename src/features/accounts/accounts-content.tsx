@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCurrency } from '@/hooks/use-currency'
 import { AccountForm } from './account-form'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, formatCompactCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 import type { Account, AccountType } from '@/types/database'
 
@@ -68,7 +68,7 @@ export function AccountsContent() {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <p className="text-[11px] text-muted-foreground">Total Balance</p>
-              <p className="text-xl font-bold">{formatCurrency(totalBalance, currency)}</p>
+              <p className="text-lg font-bold leading-tight">{formatCompactCurrency(totalBalance, currency)}</p>
               <p className="text-[11px] text-muted-foreground">{currency}</p>
             </div>
           </div>

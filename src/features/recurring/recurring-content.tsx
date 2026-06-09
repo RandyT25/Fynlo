@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { format, addDays, addWeeks, addMonths, addYears } from 'date-fns'
 import { toast } from 'sonner'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
+import { useCurrency } from '@/hooks/use-currency'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -127,9 +128,10 @@ function RecurringForm({ onSuccess, onCancel }: RecurringFormProps) {
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
+  const userCurrencyCode = useCurrency()
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<RecurringTransactionInput>({
     resolver: zodResolver(recurringTransactionSchema),
-    defaultValues: { type: 'expense', frequency: 'monthly', interval: 1, start_date: format(new Date(), 'yyyy-MM-dd'), currency: 'USD', auto_create: true },
+    defaultValues: { type: 'expense', frequency: 'monthly', interval: 1, start_date: format(new Date(), 'yyyy-MM-dd'), currency: userCurrencyCode || 'USD', auto_create: true, tags: [] },
   })
 
   const type = watch('type')

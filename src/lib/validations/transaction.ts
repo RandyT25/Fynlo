@@ -26,7 +26,7 @@ export const recurringTransactionSchema = z.object({
   frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'custom']),
   interval: z.number().int().positive(),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
-  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  end_date: z.preprocess(v => (v === '' || v === undefined ? null : v), z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional()),
   auto_create: z.boolean(),
   tags: z.array(z.string()),
 })

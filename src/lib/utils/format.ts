@@ -27,7 +27,7 @@ export function formatCurrency(
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
     ...options,
   }).format(amount)
@@ -35,8 +35,8 @@ export function formatCurrency(
 
 export function formatCompactCurrency(amount: number, currency = 'USD'): string {
   const abs = Math.abs(amount)
-  if (abs >= 1_000_000) return formatCurrency(amount / 1_000_000, currency, { maximumFractionDigits: 1 }) + 'M'
-  if (abs >= 1_000) return formatCurrency(amount / 1_000, currency, { maximumFractionDigits: 1 }) + 'K'
+  if (abs >= 1_000_000) return formatCurrency(amount / 1_000_000, currency, { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + 'M'
+  if (abs >= 1_000) return formatCurrency(amount / 1_000, currency, { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + 'K'
   return formatCurrency(amount, currency)
 }
 

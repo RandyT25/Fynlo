@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, Plus, Crown, UserCheck, Eye, Mail } from 'lucide-react'
+import { Users, Plus, Crown, UserCheck, Eye, Mail, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,8 @@ export function FamilyContent() {
   const [inviteRole, setInviteRole] = useState<'admin'|'member'|'viewer'>('member')
   const [showCreate, setShowCreate] = useState(false)
   const [familyName, setFamilyName] = useState('')
+  const [showEditFamily, setShowEditFamily] = useState(false)
+  const [editFamilyName, setEditFamilyName] = useState('')
   const supabase = createClient()
 
   useEffect(() => { fetchFamily() }, [])
@@ -66,6 +68,22 @@ export function FamilyContent() {
     setInviteEmail('')
   }
 
+  const updateFamilyName = async () => {
+    if (!editFamilyName.trim() || !family) return
+    const { error } = await supabase.from('families').update({ name: editFamilyName }).eq('id', family.id)
+    if (error) { toast.error(error.message); return }
+    setFamily({ ...family, name: editFamilyName })
+    toast.success('Family name updated')
+    setShowEditFamily(false)
+  }
+
+  const removeMember = async (memberId: string) => {
+    const { error } = await supabase.from('family_members').delete().eq('id', memberId)
+    if (error) { toast.error(error.message); return }
+    setMembers(prev => prev.filter(m => m.id !== memberId))
+    toast.success('Member removed')
+  }
+
   if (isLoading) return <LoadingPage />
 
   if (!family) {
@@ -99,13 +117,33 @@ export function FamilyContent() {
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl">👨‍👩‍👧‍👦</div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-bold">{family.name}</h2>
               <p className="text-white/70">{members.length} member{members.length !== 1 ? 's' : ''}</p>
             </div>
+            <button
+              onClick={() => { setEditFamilyName(family.name); setShowEditFamily(true) }}
+              className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center active:bg-white/30 cursor-pointer"
+            >
+              <Pencil className="w-3.5 h-3.5 text-white" />
+            </button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit family name sheet */}
+      <Sheet open={showEditFamily} onOpenChange={setShowEditFamily}>
+        <SheetContent side="bottom" className="h-auto rounded-t-3xl pb-8">
+          <SheetHeader className="px-4 pt-4 pb-3"><SheetTitle>Edit Family Name</SheetTitle></SheetHeader>
+          <div className="px-4 space-y-4">
+            <Input value={editFamilyName} onChange={e => setEditFamilyName(e.target.value)} placeholder="Family name" className="h-12 rounded-2xl" />
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowEditFamily(false)} className="flex-1 h-12 rounded-2xl">Cancel</Button>
+              <Button onClick={updateFamilyName} className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold">Save</Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -148,13 +186,21 @@ export function FamilyContent() {
                     {profile?.full_name?.[0] ?? profile?.email?.[0] ?? 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{profile?.full_name ?? 'Member'}</p>
-                  <p className="text-xs text-muted-foreground">{profile?.email}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{profile?.full_name ?? 'Member'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <RoleIcon className="w-3 h-3" style={{ color: ROLE_COLORS[member.role] }} />
-                  <Badge variant="secondary" className="text-[10px] capitalize">{member.role}</Badge>
+                  <RoleIcon className="w-3 h-3 shrink-0" style={{ color: ROLE_COLORS[member.role] }} />
+                  <Badge variant="secondary" className="text-[10px] capitalize shrink-0">{member.role}</Badge>
+                  {member.role !== 'owner' && (
+                    <button
+                      onClick={() => removeMember(member.id)}
+                      className="ml-1 w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
             )
