@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useCurrency } from '@/hooks/use-currency'
 import { TransactionForm } from './transaction-form'
 import { EmptyState } from '@/components/shared/empty-state'
+import { DynamicIcon } from '@/components/shared/dynamic-icon'
 import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 import type { TransactionWithRelations } from '@/types/database'
@@ -195,10 +196,14 @@ export function TransactionsContent() {
                         onClick={() => setEditTxn(txn)}
                       >
                         <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-base shrink-0"
+                          className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
                           style={{ backgroundColor: cat?.color ? `${cat.color}22` : '#6B728022' }}
                         >
-                          {cat?.icon ?? '💳'}
+                          <DynamicIcon
+                            name={cat?.icon ?? 'credit-card'}
+                            className="w-5 h-5"
+                            style={{ color: cat?.color ?? '#6B7280' }}
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{txn.description}</p>
