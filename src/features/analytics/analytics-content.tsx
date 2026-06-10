@@ -7,7 +7,7 @@ import {
 import { TrendingUp } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
-import { formatCurrency, getCurrencySymbol } from '@/lib/utils/format'
+import { formatCurrency } from '@/lib/utils/format'
 import { useCurrency } from '@/hooks/use-currency'
 import { CHART_COLORS } from '@/lib/utils/colors'
 import { format, subMonths, subDays, startOfMonth, endOfMonth } from 'date-fns'
@@ -45,13 +45,24 @@ export function AnalyticsContent() {
     return { from, to: format(now, 'yyyy-MM-dd') }
   }
 
+  const getGroupKey = (dateStr: string) => {
+    // 1W / 1M → group by day; 3M / 6M / 1Y / 2Y → group by month
+    if (range === '1W' || range === '1M') return dateStr.slice(0, 10) // yyyy-MM-dd
+    return dateStr.slice(0, 7) // yyyy-MM
+  }
+
+  const formatGroupLabel = (key: string) => {
+    if (range === '1W' || range === '1M') return format(new Date(key), 'MMM d')
+    return format(new Date(key + '-01'), 'MMM yy')
+  }
+
   const fetchAnalytics = async () => {
     setIsLoading(true)
     const { from, to } = getDateRange()
 
     const { data: txns } = await supabase
       .from('transactions')
-      .select('type,amount,date,category_id,category:categories(name,color)')
+      .select('type,amount,date,category_id,category:categories!category_id(name,color)')
       .is('deleted_at', null)
       .gte('date', from)
       .lte('date', to)
@@ -59,10 +70,10 @@ export function AnalyticsContent() {
 
     const all = (txns ?? []) as Array<{ type: string; amount: number; date: string; category: { name: string; color: string } | null }>
 
-    // Build running balance over time
+    // Build running balance grouped by day or month depending on range
     const dayMap: Record<string, { date: string; income: number; expenses: number }> = {}
     for (const t of all) {
-      const key = t.date.slice(0, 7) // group by month
+      const key = getGroupKey(t.date)
       if (!dayMap[key]) dayMap[key] = { date: key, income: 0, expenses: 0 }
       if (t.type === 'income' || t.type === 'refund') dayMap[key].income += t.amount
       else if (t.type === 'expense') dayMap[key].expenses += t.amount
@@ -74,7 +85,7 @@ export function AnalyticsContent() {
       .sort((a, b) => a.date.localeCompare(b.date))
       .map(m => {
         running += m.income - m.expenses
-        return { month: format(new Date(m.date + '-01'), 'MMM yy'), balance: running, income: m.income, expenses: m.expenses }
+        return { month: formatGroupLabel(m.date), balance: running, income: m.income, expenses: m.expenses }
       })
 
     // Category breakdown
@@ -174,7 +185,7 @@ export function AnalyticsContent() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis dataKey="month" tick={axisStyle} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={v => { const sym = getCurrencySymbol(currency); return `${sym}${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}` }} width={42} />
+              <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={v => { const abs = Math.abs(v); if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`; if (abs >= 1_000) return `${(v / 1_000).toFixed(0)}K`; return String(v) }} width={44} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="balance" name="Balance" stroke="#8B5CF6" strokeWidth={2.5} fill="url(#balanceGrad)" dot={false} />
             </AreaChart>
