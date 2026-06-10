@@ -71,8 +71,9 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
   })
 
   const type = watch('type')
-  const categoryId = watch('category_id')
   const isTransfer = type === 'transfer'
+  // watch returns undefined until setValue fires; fall back to the transaction's existing category
+  const categoryId = watch('category_id') ?? (transaction?.category_id ?? undefined)
 
   const filteredCategories = categories.filter(c =>
     type === 'income' || type === 'refund' ? c.type === 'income' : c.type === 'expense'

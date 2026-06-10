@@ -60,15 +60,18 @@ export function AnalyticsContent() {
     setIsLoading(true)
     const { from, to } = getDateRange()
 
-    const { data: txns } = await supabase
-      .from('transactions')
-      .select('type,amount,date,category_id,category:categories!category_id(name,color)')
-      .is('deleted_at', null)
-      .gte('date', from)
-      .lte('date', to)
-      .order('date')
+    const [{ data: txns }, { data: cats }] = await Promise.all([
+      supabase.from('transactions').select('type,amount,date,category_id').is('deleted_at', null).gte('date', from).lte('date', to).order('date'),
+      supabase.from('categories').select('id,name,color').is('deleted_at', null),
+    ])
 
-    const all = (txns ?? []) as Array<{ type: string; amount: number; date: string; category: { name: string; color: string } | null }>
+    const catById: Record<string, { name: string; color: string }> = {}
+    for (const c of (cats ?? [])) catById[c.id] = { name: c.name, color: c.color }
+
+    const all = (txns ?? []).map((t: any) => ({
+      ...t,
+      category: t.category_id ? (catById[t.category_id] ?? null) : null,
+    })) as Array<{ type: string; amount: number; date: string; category_id: string | null; category: { name: string; color: string } | null }>
 
     // Build running balance grouped by day or month depending on range
     const dayMap: Record<string, { date: string; income: number; expenses: number }> = {}
