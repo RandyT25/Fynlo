@@ -9,7 +9,7 @@ export const goalSchema = z.object({
   currency: z.string().length(3),
   target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).transform(v => v === '' ? null : v).nullable().optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
-  icon: z.string(),
+  icon: z.string().optional(),
   priority: z.number().int().min(0).max(10),
   account_id: z.string().uuid().optional().nullable(),
 })

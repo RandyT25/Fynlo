@@ -171,6 +171,7 @@ interface GoalFormProps {
 
 function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
@@ -178,7 +179,7 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
     resolver: zodResolver(goalSchema),
     defaultValues: goal
       ? { name: goal.name, description: goal.description ?? '', type: goal.type, target_amount: goal.target_amount, current_amount: goal.current_amount, currency: goal.currency, target_date: goal.target_date ?? undefined, color: goal.color, priority: goal.priority }
-      : { type: 'savings', color: '#3B82F6', priority: 0 },
+      : { type: 'savings', color: '#3B82F6', priority: 0, currency: userCurrency, current_amount: 0 },
   })
 
   const color = watch('color')
