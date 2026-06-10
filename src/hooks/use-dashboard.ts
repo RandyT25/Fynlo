@@ -123,22 +123,22 @@ async function getCashFlowData(supabase: ReturnType<typeof createClient>, months
 }
 
 async function getCategorySpending(supabase: ReturnType<typeof createClient>, start: string, end: string) {
-  const { data } = await supabase
-    .from('transactions')
-    .select('amount, category:categories(id,name,color)')
-    .eq('type', 'expense')
-    .is('deleted_at', null)
-    .gte('date', start)
-    .lte('date', end)
+  const [{ data }, { data: cats }] = await Promise.all([
+    supabase.from('transactions').select('amount,category_id').eq('type', 'expense').is('deleted_at', null).gte('date', start).lte('date', end),
+    supabase.from('categories').select('id,name,color').is('deleted_at', null),
+  ])
 
   if (!data) return []
+
+  const catById: Record<string, { name: string; color: string }> = {}
+  for (const c of (cats ?? [])) catById[c.id] = { name: c.name, color: c.color }
 
   const grouped: Record<string, { name: string; amount: number; color: string }> = {}
   let total = 0
 
   for (const t of data) {
-    const cat = t.category as { id: string; name: string; color: string } | null
-    const key = cat?.id ?? 'uncategorized'
+    const cat = t.category_id ? (catById[t.category_id] ?? null) : null
+    const key = t.category_id ?? 'uncategorized'
     const name = cat?.name ?? 'Uncategorized'
     const color = cat?.color ?? '#6B7280'
     if (!grouped[key]) grouped[key] = { name, amount: 0, color }

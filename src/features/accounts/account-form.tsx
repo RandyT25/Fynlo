@@ -140,10 +140,14 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
           {errors.balance && <p className="text-xs text-destructive">{errors.balance.message}</p>}
         </div>
       ) : (
-        <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-muted/40">
-          <p className="text-sm text-muted-foreground">Balance</p>
-          <p className="text-sm font-semibold">{currencySymbol}{account.balance.toLocaleString()}</p>
-        </div>
+        <>
+          {/* Hidden input keeps balance registered so Zod validation passes */}
+          <input type="hidden" {...register('balance', { valueAsNumber: true })} />
+          <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-muted/40">
+            <p className="text-sm text-muted-foreground">Balance</p>
+            <p className="text-sm font-semibold">{currencySymbol}{account.balance.toLocaleString()}</p>
+          </div>
+        </>
       )}
 
       <div className="space-y-2">
