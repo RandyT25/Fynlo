@@ -35,7 +35,7 @@ export function useAccounts() {
   const totalBalance = accounts
     .filter(a => a.is_active)
     .reduce((sum, a) => {
-      if (a.type === 'credit_card' || a.type === 'loan') return sum - a.balance
+      if (a.type === 'credit_card' || a.type === 'loan') return sum - Math.abs(a.balance)
       return sum + a.balance
     }, 0)
 

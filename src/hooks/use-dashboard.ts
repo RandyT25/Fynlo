@@ -55,7 +55,7 @@ export function useDashboard() {
 
     const accts: any[] = accounts ?? []
     const totalBalance = accts.reduce((s: number, a: any) => {
-      if (a.type === 'credit_card' || a.type === 'loan') return s - a.balance
+      if (a.type === 'credit_card' || a.type === 'loan') return s - Math.abs(a.balance)
       return s + a.balance
     }, 0)
 
