@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Target } from 'lucide-react'
+import { Plus, Target, Pencil } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { useCurrency } from '@/hooks/use-currency'
@@ -30,7 +30,11 @@ export function GoalsContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editGoal, setEditGoal] = useState<Goal | null>(null)
+  const [contributeGoal, setContributeGoal] = useState<Goal | null>(null)
+  const [contributeAmount, setContributeAmount] = useState('')
+  const [contributeLoading, setContributeLoading] = useState(false)
   const currency = useCurrency()
+  const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
   const fetchGoals = useCallback(async () => {
@@ -52,6 +56,26 @@ export function GoalsContent() {
     await supabase.from('goals').update({ deleted_at: new Date().toISOString() }).eq('id', id)
     toast.success('Goal deleted')
     fetchGoals()
+  }
+
+  const addContribution = async () => {
+    if (!contributeGoal) return
+    const amount = parseFloat(contributeAmount)
+    if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return }
+    setContributeLoading(true)
+    const newAmount = contributeGoal.current_amount + amount
+    const isCompleted = newAmount >= contributeGoal.target_amount
+    const { error } = await supabase.from('goals').update({
+      current_amount: newAmount,
+      ...(isCompleted ? { is_completed: true } : {}),
+    }).eq('id', contributeGoal.id)
+    if (error) { toast.error(error.message) } else {
+      toast.success(isCompleted ? '🎉 Goal reached!' : 'Contribution added')
+      setContributeGoal(null)
+      setContributeAmount('')
+      fetchGoals()
+    }
+    setContributeLoading(false)
   }
 
   const active = goals.filter(g => !g.is_completed)
@@ -97,44 +121,54 @@ export function GoalsContent() {
         <EmptyState icon={Target} title="No goals yet" description="Tap + to set your first financial goal" />
       ) : (
         <div className="space-y-3">
-          {displayGoals.map((goal, i) => (
-            <motion.div
-              key={goal.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-              className={cn('bg-card rounded-3xl p-4 shadow-sm border border-border/50 cursor-pointer active:scale-[0.99] transition-transform', goal.is_completed && 'opacity-70')}
-              onClick={() => { setEditGoal(goal); setShowForm(true) }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: `${goal.color}22` }}>
-                    🎯
+          {displayGoals.map((goal, i) => {
+            const pct = Math.min((goal.current_amount / goal.target_amount) * 100, 100)
+            return (
+              <motion.div
+                key={goal.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className={cn('bg-card rounded-3xl p-4 shadow-sm border border-border/50', goal.is_completed && 'opacity-70')}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: `${goal.color}22` }}>
+                      🎯
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{goal.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{goal.type}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm">{goal.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{goal.type}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setEditGoal(goal); setShowForm(true) }}
+                      className="w-8 h-8 rounded-full bg-muted flex items-center justify-center active:bg-muted/70"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    {!goal.is_completed && (
+                      <button
+                        onClick={() => { setContributeGoal(goal); setContributeAmount('') }}
+                        className="w-8 h-8 rounded-full flex items-center justify-center active:opacity-70"
+                        style={{ backgroundColor: goal.color }}
+                      >
+                        <Plus className="w-4 h-4 text-white" />
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-sm">{formatCurrency(goal.target_amount, currency)}</p>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="font-semibold" style={{ color: goal.color }}>{formatCurrency(goal.current_amount, currency)}</span>
+                  <span className="text-muted-foreground text-xs">{Math.round(pct)}% · {formatCurrency(goal.target_amount, currency)}</span>
                 </div>
-              </div>
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="font-semibold" style={{ color: goal.color }}>{formatCurrency(goal.current_amount, currency)}</span>
-                <span className="text-muted-foreground text-xs">{formatCurrency(goal.target_amount, currency)}</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${Math.min((goal.current_amount / goal.target_amount) * 100, 100)}%`,
-                    backgroundColor: goal.color,
-                  }}
-                />
-              </div>
-            </motion.div>
-          ))}
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
       )}
 
@@ -156,6 +190,62 @@ export function GoalsContent() {
               onSuccess={() => { setShowForm(false); setEditGoal(null); fetchGoals() }}
               onCancel={() => { setShowForm(false); setEditGoal(null) }}
             />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Quick contribution sheet */}
+      <Sheet open={!!contributeGoal} onOpenChange={open => { if (!open) { setContributeGoal(null); setContributeAmount('') } }}>
+        <SheetContent side="bottom" className="rounded-t-3xl p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 border-b border-border/30">
+            <SheetTitle>Add to Goal</SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pt-5 pb-8 space-y-5">
+            {contributeGoal && (
+              <>
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-muted/50">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: `${contributeGoal.color}22` }}>
+                    🎯
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{contributeGoal.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(contributeGoal.current_amount, currency)} / {formatCurrency(contributeGoal.target_amount, currency)}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold" style={{ color: contributeGoal.color }}>
+                    {Math.round((contributeGoal.current_amount / contributeGoal.target_amount) * 100)}%
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>How much are you adding?</Label>
+                  <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
+                    <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
+                      {currencySymbol}
+                    </span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      placeholder="0"
+                      value={contributeAmount}
+                      onChange={e => setContributeAmount(e.target.value)}
+                      className="flex-1 px-3 py-3 text-xl font-bold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full h-12 rounded-2xl gradient-primary border-0 font-semibold"
+                  onClick={addContribution}
+                  disabled={contributeLoading || !contributeAmount}
+                >
+                  {contributeLoading ? 'Saving…' : 'Add to Goal'}
+                </Button>
+              </>
+            )}
           </div>
         </SheetContent>
       </Sheet>
