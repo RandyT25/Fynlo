@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts'
-import { TrendingUp, TrendingDown, Wallet } from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet, ChevronDown } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { formatCurrency } from '@/lib/utils/format'
@@ -28,6 +28,15 @@ export function AnalyticsContent() {
   const [range, setRange] = useState<TimeRange>('1M')
   const [data, setData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+
+  const toggleCategory = (name: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev)
+      next.has(name) ? next.delete(name) : next.add(name)
+      return next
+    })
+  }
   const currency = useCurrency()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
@@ -59,7 +68,7 @@ export function AnalyticsContent() {
     const { from, to } = getDateRange()
 
     const [{ data: txns }, { data: cats }] = await Promise.all([
-      supabase.from('transactions').select('type,amount,date,category_id').is('deleted_at', null).gte('date', from).lte('date', to).order('date'),
+      supabase.from('transactions').select('type,amount,date,description,category_id').is('deleted_at', null).gte('date', from).lte('date', to).order('date', { ascending: false }),
       supabase.from('categories').select('id,name,color').is('deleted_at', null),
     ])
 
@@ -69,7 +78,7 @@ export function AnalyticsContent() {
     const all = (txns ?? []).map((t: any) => ({
       ...t,
       category: t.category_id ? (catById[t.category_id] ?? null) : null,
-    })) as Array<{ type: string; amount: number; date: string; category_id: string | null; category: { name: string; color: string } | null }>
+    })) as Array<{ type: string; amount: number; date: string; description: string; category_id: string | null; category: { name: string; color: string } | null }>
 
     const dayMap: Record<string, { date: string; income: number; expenses: number }> = {}
     for (const t of all) {
@@ -87,11 +96,12 @@ export function AnalyticsContent() {
         return { month: formatGroupLabel(m.date), balance: running, income: m.income, expenses: m.expenses }
       })
 
-    const catMap: Record<string, { name: string; amount: number; color: string }> = {}
+    const catMap: Record<string, { name: string; amount: number; color: string; transactions: Array<{ date: string; description: string; amount: number }> }> = {}
     for (const t of all.filter(t => t.type === 'expense')) {
       const key = t.category?.name ?? 'Uncategorized'
-      if (!catMap[key]) catMap[key] = { name: key, amount: 0, color: t.category?.color ?? '#6B7280' }
+      if (!catMap[key]) catMap[key] = { name: key, amount: 0, color: t.category?.color ?? '#6B7280', transactions: [] }
       catMap[key].amount += t.amount
+      catMap[key].transactions.push({ date: t.date, description: t.description, amount: t.amount })
     }
     const categories = Object.values(catMap).sort((a, b) => b.amount - a.amount).slice(0, 8)
     const totalExpenses = all.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
@@ -269,10 +279,14 @@ export function AnalyticsContent() {
             <div className="space-y-2">
               {(data?.categories ?? []).map((cat: any, i: number) => {
                 const pct = data?.totalExpenses > 0 ? (cat.amount / data.totalExpenses) * 100 : 0
+                const isExpanded = expandedCategories.has(cat.name)
                 return (
-                  <div key={i} className="bg-card rounded-2xl px-3.5 py-3 border border-border/40 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      {/* Rank + color badge */}
+                  <div key={i} className="bg-card rounded-2xl border border-border/40 shadow-sm overflow-hidden">
+                    {/* Header row — tap to expand */}
+                    <button
+                      className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-muted/40 transition-colors text-left"
+                      onClick={() => toggleCategory(cat.name)}
+                    >
                       <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm text-white"
                         style={{ backgroundColor: cat.color }}
@@ -299,7 +313,34 @@ export function AnalyticsContent() {
                           />
                         </div>
                       </div>
-                    </div>
+                      <ChevronDown
+                        className={cn('w-4 h-4 text-muted-foreground shrink-0 ml-1 transition-transform duration-200', isExpanded && 'rotate-180')}
+                      />
+                    </button>
+
+                    {/* Expanded transactions */}
+                    {isExpanded && (
+                      <div className="border-t border-border/40">
+                        <div className="px-3.5 py-1 flex justify-between text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          <span>{cat.transactions.length} transaction{cat.transactions.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        {cat.transactions.map((txn: any, j: number) => (
+                          <div
+                            key={j}
+                            className={cn('flex items-center gap-3 px-3.5 py-2.5', j > 0 && 'border-t border-border/20')}
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm truncate">{txn.description}</p>
+                              <p className="text-[11px] text-muted-foreground">{format(new Date(txn.date), 'MMM d, yyyy')}</p>
+                            </div>
+                            <span className="text-sm font-semibold text-destructive shrink-0">
+                              -{formatCurrency(txn.amount, currency)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}

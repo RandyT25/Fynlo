@@ -7,11 +7,10 @@ import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { transactionSchema, type TransactionInput } from '@/lib/validations/transaction'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCurrency } from '@/hooks/use-currency'
@@ -26,6 +25,15 @@ const TRANSACTION_TYPES = [
   { value: 'refund', label: 'Refund', color: 'text-purple-500' },
 ]
 
+interface Category {
+  id: string
+  name: string
+  color: string
+  icon: string
+  type: string
+  parent_id: string | null
+}
+
 interface TransactionFormProps {
   transaction?: Transaction
   onSuccess?: () => void
@@ -34,15 +42,22 @@ interface TransactionFormProps {
 
 export function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; color: string; type: string }>>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
   const { accounts } = useAccounts()
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
   useEffect(() => {
-    supabase.from('categories').select('id,name,color,type').is('deleted_at', null).order('order_index')
-      .then(({ data }: { data: Array<{ id: string; name: string; color: string; type: string }> | null }) => setCategories(data ?? []))
+    supabase
+      .from('categories')
+      .select('id,name,color,icon,type,parent_id')
+      .is('deleted_at', null)
+      .order('order_index')
+      .then(({ data }: { data: Category[] | null }) => {
+        setCategories(data ?? [])
+      })
   }, [])
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransactionInput>({
@@ -71,13 +86,60 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
   })
 
   const type = watch('type')
+  const accountId = watch('account_id')
+  const toAccountId = watch('to_account_id')
+  const categoryId = watch('category_id') ?? transaction?.category_id ?? undefined
   const isTransfer = type === 'transfer'
-  // watch returns undefined until setValue fires; fall back to the transaction's existing category
-  const categoryId = watch('category_id') ?? (transaction?.category_id ?? undefined)
 
-  const filteredCategories = categories.filter(c =>
-    type === 'income' || type === 'refund' ? c.type === 'income' : c.type === 'expense'
+  // Parent categories matching the current transaction type
+  const parentCategories = categories.filter(c =>
+    c.parent_id === null &&
+    (type === 'income' || type === 'refund' ? c.type === 'income' : c.type === 'expense')
   )
+
+  // Children of the selected parent
+  const subcategories = selectedParentId
+    ? categories.filter(c => c.parent_id === selectedParentId)
+    : []
+
+  // When the selected parent changes, keep or clear the category_id
+  const handleParentSelect = (parentId: string) => {
+    const children = categories.filter(c => c.parent_id === parentId)
+    if (parentId === selectedParentId) {
+      // Deselect
+      setSelectedParentId(null)
+      setValue('category_id', null)
+    } else {
+      setSelectedParentId(parentId)
+      if (children.length === 0) {
+        // No subcategories — select the parent directly
+        setValue('category_id', parentId)
+      } else {
+        // Has subcategories — don't commit category yet, wait for child selection
+        setValue('category_id', null)
+      }
+    }
+  }
+
+  const handleSubcategorySelect = (childId: string) => {
+    if (categoryId === childId) {
+      setValue('category_id', null)
+    } else {
+      setValue('category_id', childId)
+    }
+  }
+
+  // Initialise selectedParentId when editing an existing transaction
+  useEffect(() => {
+    if (!transaction?.category_id || !categories.length) return
+    const cat = categories.find(c => c.id === transaction.category_id)
+    if (!cat) return
+    if (cat.parent_id) {
+      setSelectedParentId(cat.parent_id)
+    } else {
+      setSelectedParentId(cat.id)
+    }
+  }, [transaction?.category_id, categories])
 
   const onSubmit = async (data: TransactionInput) => {
     setIsLoading(true)
@@ -108,12 +170,16 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
           <button
             key={t.value}
             type="button"
-            onClick={() => setValue('type', t.value as TransactionInput['type'])}
+            onClick={() => {
+              setValue('type', t.value as TransactionInput['type'])
+              setSelectedParentId(null)
+              setValue('category_id', null)
+            }}
             className={cn(
               'py-2 px-3 rounded-xl text-sm font-medium border transition-all',
               type === t.value
                 ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:border-primary/50'
+                : 'border-border text-muted-foreground'
             )}
           >
             {t.label}
@@ -121,28 +187,114 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
         ))}
       </div>
 
-      {/* Category */}
-      {!isTransfer && filteredCategories.length > 0 && (
-        <div className="space-y-2">
-          <Label>Category <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-            {filteredCategories.map(cat => (
+      {/* Account — pill buttons, no Select */}
+      <div className="space-y-2">
+        <Label>Account</Label>
+        {accounts.length === 0 ? (
+          <a href="/accounts" className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-sm text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            No accounts yet — tap here to add one first
+          </a>
+        ) : (
+          <div className="flex gap-2 flex-wrap">
+            {accounts.map(acc => (
               <button
-                key={cat.id}
+                key={acc.id}
                 type="button"
-                onClick={() => setValue('category_id', categoryId === cat.id ? null : cat.id)}
+                onClick={() => setValue('account_id', acc.id)}
                 className={cn(
-                  'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-                  categoryId === cat.id
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                  accountId === acc.id
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border text-muted-foreground'
                 )}
               >
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                {cat.name}
+                <div className="w-2 h-2 rounded-full bg-current opacity-60" />
+                {acc.name}
               </button>
             ))}
           </div>
+        )}
+        {errors.account_id && <p className="text-xs text-destructive">{errors.account_id.message}</p>}
+      </div>
+
+      {/* To Account (transfer only) — also pills */}
+      {isTransfer && (
+        <div className="space-y-2">
+          <Label>To Account</Label>
+          <div className="flex gap-2 flex-wrap">
+            {accounts.map(acc => (
+              <button
+                key={acc.id}
+                type="button"
+                onClick={() => setValue('to_account_id', acc.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                  toAccountId === acc.id
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground'
+                )}
+              >
+                <div className="w-2 h-2 rounded-full bg-current opacity-60" />
+                {acc.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Category — 2-level picker */}
+      {!isTransfer && parentCategories.length > 0 && (
+        <div className="space-y-2">
+          <Label>Category <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+
+          {/* Parent categories */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+            {parentCategories.map(cat => {
+              const hasChildren = categories.some(c => c.parent_id === cat.id)
+              const isSelected = selectedParentId === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleParentSelect(cat.id)}
+                  className={cn(
+                    'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                    isSelected
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground'
+                  )}
+                >
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                  {cat.name}
+                  {hasChildren && (
+                    <ChevronRight className={cn('w-3 h-3 transition-transform', isSelected && 'rotate-90')} />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Subcategories — shown when parent with children is selected */}
+          {subcategories.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5 pl-2 border-l-2" style={{ borderColor: parentCategories.find(c => c.id === selectedParentId)?.color ?? '#6B7280' }}>
+              {subcategories.map(sub => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => handleSubcategorySelect(sub.id)}
+                  className={cn(
+                    'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                    categoryId === sub.id
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border/60 text-muted-foreground'
+                  )}
+                >
+                  {sub.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -165,46 +317,6 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
         {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
       </div>
 
-      {/* Account */}
-      <div className="space-y-2">
-        <Label>Account</Label>
-        {accounts.length === 0 ? (
-          <a href="/accounts" className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-sm text-amber-700 dark:text-amber-400">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            No accounts yet — tap here to add one first
-          </a>
-        ) : (
-          <Select onValueChange={(v: string | null) => setValue('account_id', v as any)} defaultValue={transaction?.account_id}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map(acc => (
-                <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {errors.account_id && <p className="text-xs text-destructive">{errors.account_id.message}</p>}
-      </div>
-
-      {/* To Account (transfer only) */}
-      {isTransfer && (
-        <div className="space-y-2">
-          <Label>To Account</Label>
-          <Select onValueChange={(v: string | null) => setValue('to_account_id', v as any)} defaultValue={transaction?.to_account_id ?? undefined}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select destination account" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map(acc => (
-                <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       {/* Description */}
       <div className="space-y-2">
         <Label>Description</Label>
@@ -225,7 +337,6 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
         <Textarea placeholder="Add any notes..." rows={2} {...register('notes')} />
       </div>
 
-      {/* Pinned action row — sticky so it never scrolls off on small screens */}
       <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">

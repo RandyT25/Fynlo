@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, CreditCard } from 'lucide-react'
+import { Plus, CreditCard, Check, BanknoteIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { format, differenceInDays, parseISO } from 'date-fns'
+import { format, differenceInDays, parseISO, addWeeks, addMonths, addYears } from 'date-fns'
 import { toast } from 'sonner'
 import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
@@ -15,13 +15,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingPage } from '@/components/shared/loading-spinner'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
-import type { Subscription } from '@/types/database'
+import type { Subscription, Account } from '@/types/database'
 
 const subscriptionSchema = z.object({
   name: z.string().min(1),
@@ -36,26 +36,93 @@ const subscriptionSchema = z.object({
 
 type SubscriptionInput = z.infer<typeof subscriptionSchema>
 
+function advanceBillingDate(date: string, cycle: string): string {
+  const d = parseISO(date)
+  switch (cycle) {
+    case 'weekly': return format(addWeeks(d, 1), 'yyyy-MM-dd')
+    case 'quarterly': return format(addMonths(d, 3), 'yyyy-MM-dd')
+    case 'yearly': return format(addYears(d, 1), 'yyyy-MM-dd')
+    default: return format(addMonths(d, 1), 'yyyy-MM-dd')
+  }
+}
+
 export function SubscriptionsContent() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editSub, setEditSub] = useState<Subscription | null>(null)
+  const [payingSub, setPayingSub] = useState<Subscription | null>(null)
+  const [payAccountId, setPayAccountId] = useState('')
+  const [payLoading, setPayLoading] = useState(false)
   const currency = useCurrency()
   const supabase = createClient()
 
   const fetchSubs = useCallback(async () => {
     setIsLoading(true)
-    const { data } = await supabase.from('subscriptions').select('*').is('deleted_at', null).order('next_billing_date')
-    setSubscriptions(data ?? [])
+    const [{ data: subs }, { data: accts }] = await Promise.all([
+      supabase.from('subscriptions').select('*').is('deleted_at', null).order('next_billing_date'),
+      supabase.from('accounts').select('*').is('deleted_at', null).order('created_at', { ascending: true }),
+    ])
+    setSubscriptions(subs ?? [])
+    setAccounts(accts ?? [])
     setIsLoading(false)
   }, [])
 
   useEffect(() => { fetchSubs() }, [fetchSubs])
 
+  // Auto-create subscription_renewal notifications for due subscriptions (deduped per day)
+  useEffect(() => {
+    if (!subscriptions.length) return
+    const generateNotifications = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const today = format(new Date(), 'yyyy-MM-dd')
+      const dueSubs = subscriptions.filter(s => {
+        if (s.status !== 'active') return false
+        const days = differenceInDays(parseISO(s.next_billing_date), new Date())
+        return days <= 7
+      })
+      if (!dueSubs.length) return
+
+      // Fetch existing notifications created today for these subscriptions
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('reference_id')
+        .eq('reference_type', 'subscription')
+        .eq('user_id', user.id)
+        .gte('created_at', `${today}T00:00:00`)
+
+      const notifiedIds = new Set((existing ?? []).map((n: { reference_id: string | null }) => n.reference_id))
+
+      for (const sub of dueSubs) {
+        if (notifiedIds.has(sub.id)) continue
+        const days = differenceInDays(parseISO(sub.next_billing_date), new Date())
+        const title = days < 0
+          ? `${sub.name} payment overdue`
+          : days === 0
+            ? `${sub.name} is due today`
+            : `${sub.name} due in ${days} day${days === 1 ? '' : 's'}`
+        const message = `${formatCurrency(sub.amount, sub.currency)} · ${sub.billing_cycle} subscription`
+        await supabase.from('notifications').insert({
+          user_id: user.id,
+          title,
+          message,
+          type: 'subscription_renewal',
+          reference_id: sub.id,
+          reference_type: 'subscription',
+        })
+      }
+    }
+    generateNotifications()
+  }, [subscriptions])
+
   const active = subscriptions.filter(s => s.status === 'active')
+  const inactive = subscriptions.filter(s => s.status !== 'active')
+
   const monthlyTotal = active.reduce((sum, s) => {
-    const mult = { weekly: 4.33, monthly: 1, quarterly: 1/3, yearly: 1/12 }
+    const mult: Record<string, number> = { weekly: 4.33, monthly: 1, quarterly: 1 / 3, yearly: 1 / 12 }
     return sum + s.amount * (mult[s.billing_cycle] ?? 1)
   }, 0)
 
@@ -63,6 +130,53 @@ export function SubscriptionsContent() {
     if (!confirm('Delete this subscription?')) return
     await supabase.from('subscriptions').update({ deleted_at: new Date().toISOString() }).eq('id', id)
     toast.success('Subscription deleted')
+    fetchSubs()
+  }
+
+  const openPay = (sub: Subscription) => {
+    setPayAccountId(accounts[0]?.id ?? '')
+    setPayingSub(sub)
+  }
+
+  const markAsPaid = async () => {
+    if (!payingSub || !payAccountId) { toast.error('Select an account'); return }
+    setPayLoading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setPayLoading(false); return }
+
+    const nextDate = advanceBillingDate(payingSub.next_billing_date, payingSub.billing_cycle)
+
+    const [txResult, subResult] = await Promise.all([
+      supabase.from('transactions').insert({
+        user_id: user.id,
+        account_id: payAccountId,
+        type: 'expense',
+        amount: payingSub.amount,
+        currency: payingSub.currency,
+        description: payingSub.name,
+        notes: `${payingSub.billing_cycle} subscription`,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        tags: ['subscription'],
+        is_reconciled: false,
+      }),
+      supabase.from('subscriptions').update({ next_billing_date: nextDate }).eq('id', payingSub.id),
+    ])
+
+    if (txResult.error) { toast.error(txResult.error.message); setPayLoading(false); return }
+    if (subResult.error) { toast.error(subResult.error.message); setPayLoading(false); return }
+
+    await supabase.from('notifications').insert({
+      user_id: user.id,
+      title: `${payingSub.name} marked as paid`,
+      message: `${formatCurrency(payingSub.amount, payingSub.currency)} logged. Next due ${formatDate(nextDate)}.`,
+      type: 'subscription_renewal',
+      reference_id: payingSub.id,
+      reference_type: 'subscription',
+    })
+
+    toast.success('Paid & logged to transactions')
+    setPayingSub(null)
+    setPayLoading(false)
     fetchSubs()
   }
 
@@ -91,35 +205,87 @@ export function SubscriptionsContent() {
       {subscriptions.length === 0 ? (
         <EmptyState icon={CreditCard} title="No subscriptions" description="Tap + to track your recurring charges" />
       ) : (
-        <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
-          {subscriptions.map((sub, i) => {
-            const daysLeft = differenceInDays(parseISO(sub.next_billing_date), new Date())
-            const isUrgent = daysLeft <= 3 && sub.status === 'active'
-            return (
-              <motion.div
-                key={sub.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.03 }}
-                className={cn('flex items-center gap-3 px-4 py-3.5 active:bg-muted/50 cursor-pointer', i > 0 && 'border-t border-border/40')}
-                onClick={() => { setEditSub(sub); setShowForm(true) }}
-              >
-                <div className="w-11 h-11 rounded-2xl bg-muted flex items-center justify-center text-xl shrink-0">
-                  {sub.logo_url ? <img src={sub.logo_url} alt="" className="w-7 h-7 rounded-lg" /> : '📦'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{sub.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {sub.billing_cycle}{isUrgent ? ` · Due in ${daysLeft}d` : ''}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-sm text-destructive">-{formatCurrency(sub.amount, sub.currency)}</p>
-                  <p className="text-[11px] text-muted-foreground">{formatDate(sub.next_billing_date)}</p>
-                </div>
-              </motion.div>
-            )
-          })}
+        <div className="space-y-3">
+          {/* Active subscriptions */}
+          {active.length > 0 && (
+            <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50">
+              {active.map((sub, i) => {
+                const daysLeft = differenceInDays(parseISO(sub.next_billing_date), new Date())
+                const isOverdue = daysLeft < 0
+                const isDueSoon = daysLeft <= 3 && daysLeft >= 0
+                return (
+                  <motion.div
+                    key={sub.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: i * 0.03 }}
+                    className={cn('px-4 py-3.5 cursor-pointer', i > 0 && 'border-t border-border/40')}
+                  >
+                    <div
+                      className="flex items-center gap-3"
+                      onClick={() => { setEditSub(sub); setShowForm(true) }}
+                    >
+                      <div className="w-11 h-11 rounded-2xl bg-muted flex items-center justify-center text-xl shrink-0">
+                        {sub.logo_url ? <img src={sub.logo_url} alt="" className="w-7 h-7 rounded-lg" /> : '📦'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{sub.name}</p>
+                        <p className={cn('text-xs capitalize', isOverdue ? 'text-destructive font-medium' : isDueSoon ? 'text-orange-400 font-medium' : 'text-muted-foreground')}>
+                          {sub.billing_cycle} · {isOverdue ? `Overdue by ${Math.abs(daysLeft)}d` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 mr-2">
+                        <p className="font-bold text-sm text-destructive">-{formatCurrency(sub.amount, sub.currency)}</p>
+                        <p className="text-[11px] text-muted-foreground">{formatDate(sub.next_billing_date)}</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-2.5">
+                      <button
+                        onClick={() => openPay(sub)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/15 text-green-500 text-xs font-semibold active:bg-green-500/25 transition-colors"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Mark as Paid
+                      </button>
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Stopped / paused subscriptions */}
+          {inactive.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Stopped / Paused</p>
+              <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border/50 opacity-60">
+                {inactive.map((sub, i) => (
+                  <motion.div
+                    key={sub.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: i * 0.03 }}
+                    className={cn('flex items-center gap-3 px-4 py-3.5 cursor-pointer', i > 0 && 'border-t border-border/40')}
+                    onClick={() => { setEditSub(sub); setShowForm(true) }}
+                  >
+                    <div className="w-11 h-11 rounded-2xl bg-muted flex items-center justify-center text-xl shrink-0 grayscale">
+                      {sub.logo_url ? <img src={sub.logo_url} alt="" className="w-7 h-7 rounded-lg" /> : '📦'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{sub.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{sub.billing_cycle}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant="outline" className={cn('text-[10px]', sub.status === 'cancelled' ? 'border-destructive/40 text-destructive/70' : 'border-orange-400/40 text-orange-400/70')}>
+                        {sub.status === 'cancelled' ? 'Stopped' : 'Paused'}
+                      </Badge>
+                      <p className="font-bold text-sm text-muted-foreground">{formatCurrency(sub.amount, sub.currency)}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -132,15 +298,69 @@ export function SubscriptionsContent() {
         <Plus className="w-6 h-6" />
       </button>
 
+      {/* Add / Edit sheet */}
       <Sheet open={showForm} onOpenChange={open => { setShowForm(open); if (!open) setEditSub(null) }}>
         <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
-          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>{editSub ? 'Edit' : 'Add'} Subscription</SheetTitle></SheetHeader>
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30">
+            <SheetTitle>{editSub ? 'Edit' : 'Add'} Subscription</SheetTitle>
+          </SheetHeader>
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
             <SubscriptionForm
               sub={editSub ?? undefined}
               onSuccess={() => { setShowForm(false); setEditSub(null); fetchSubs() }}
               onCancel={() => { setShowForm(false); setEditSub(null) }}
+              onDelete={editSub ? () => { handleDelete(editSub.id); setShowForm(false); setEditSub(null) } : undefined}
             />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Mark as Paid sheet */}
+      <Sheet open={!!payingSub} onOpenChange={open => { if (!open) setPayingSub(null) }}>
+        <SheetContent side="bottom" className="rounded-t-3xl p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 border-b border-border/30">
+            <SheetTitle>Mark as Paid</SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pt-5 pb-8 space-y-5">
+            {payingSub && (
+              <>
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-muted/50">
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-lg shrink-0">
+                    {payingSub.logo_url ? <img src={payingSub.logo_url} alt="" className="w-6 h-6 rounded-lg" /> : '📦'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{payingSub.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{payingSub.billing_cycle} · next due {formatDate(advanceBillingDate(payingSub.next_billing_date, payingSub.billing_cycle))}</p>
+                  </div>
+                  <p className="font-bold text-destructive shrink-0">{formatCurrency(payingSub.amount, payingSub.currency)}</p>
+                </div>
+
+                {accounts.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label>Deduct from account</Label>
+                    <Select value={payAccountId} onValueChange={(v) => setPayAccountId(v ?? '')}>
+                      <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
+                      <SelectContent>
+                        {accounts.map(a => (
+                          <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-2">Add an account first to log transactions.</p>
+                )}
+
+                <Button
+                  className="w-full h-12 rounded-2xl bg-green-500 hover:bg-green-600 border-0 font-semibold text-white"
+                  onClick={markAsPaid}
+                  disabled={payLoading || !payAccountId}
+                >
+                  <BanknoteIcon className="w-4 h-4 mr-2" />
+                  {payLoading ? 'Logging…' : 'Confirm Payment'}
+                </Button>
+              </>
+            )}
           </div>
         </SheetContent>
       </Sheet>
@@ -152,15 +372,16 @@ interface SubscriptionFormProps {
   sub?: Subscription
   onSuccess?: () => void
   onCancel?: () => void
+  onDelete?: () => void
 }
 
-function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
+function SubscriptionForm({ sub, onSuccess, onCancel, onDelete }: SubscriptionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<SubscriptionInput>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<SubscriptionInput>({
     resolver: zodResolver(subscriptionSchema),
     defaultValues: sub ? {
       name: sub.name, amount: sub.amount, currency: sub.currency,
@@ -168,6 +389,8 @@ function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
       status: sub.status, notes: sub.notes ?? '',
     } : { billing_cycle: 'monthly', status: 'active', currency: userCurrency, next_billing_date: format(new Date(), 'yyyy-MM-dd') },
   })
+
+  const status = watch('status')
 
   const onSubmit = async (data: SubscriptionInput) => {
     setIsLoading(true)
@@ -230,14 +453,36 @@ function SubscriptionForm({ sub, onSuccess, onCancel }: SubscriptionFormProps) {
         <Input type="date" {...register('next_billing_date')} />
       </div>
       <div className="space-y-2">
+        <Label>Status</Label>
+        <Select value={status} onValueChange={(v) => setValue('status', v as SubscriptionInput['status'])}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="paused">Paused</SelectItem>
+            <SelectItem value="cancelled">Stopped</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
         <Label>Website (optional)</Label>
         <Input placeholder="https://..." {...register('website_url')} />
       </div>
-      <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">Cancel</Button>}
-        <Button type="submit" className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold" disabled={isLoading}>
-          {isLoading ? 'Saving…' : sub ? 'Update' : 'Add Subscription'}
-        </Button>
+      <div className="space-y-2">
+        <Label>Notes (optional)</Label>
+        <Input placeholder="Any notes…" {...register('notes')} />
+      </div>
+      <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm pt-3 pb-6 border-t border-border/20 mt-4 space-y-2">
+        <div className="flex gap-2">
+          {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-12 rounded-2xl">Cancel</Button>}
+          <Button type="submit" className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold" disabled={isLoading}>
+            {isLoading ? 'Saving…' : sub ? 'Update' : 'Add Subscription'}
+          </Button>
+        </div>
+        {onDelete && (
+          <Button type="button" variant="ghost" onClick={onDelete} className="w-full h-10 rounded-2xl text-destructive hover:text-destructive hover:bg-destructive/10">
+            Delete Subscription
+          </Button>
+        )}
       </div>
     </form>
   )

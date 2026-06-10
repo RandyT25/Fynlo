@@ -15,18 +15,50 @@ import { cn } from '@/lib/utils'
 import type { Account, AccountType } from '@/types/database'
 
 const ACCOUNT_META: Record<AccountType, { icon: LucideIcon; color: string; label: string }> = {
-  cash:        { icon: Banknote,   color: '#22C55E', label: 'Cash' },
-  checking:    { icon: Landmark,   color: '#3B82F6', label: 'Checking' },
-  savings:     { icon: PiggyBank,  color: '#8B5CF6', label: 'Savings' },
+  cash:        { icon: Banknote,   color: '#22C55E', label: 'Cash / Wallet' },
+  checking:    { icon: Landmark,   color: '#3B82F6', label: 'Bank Checking' },
+  savings:     { icon: PiggyBank,  color: '#8B5CF6', label: 'Bank Savings' },
   credit_card: { icon: CreditCard, color: '#EF4444', label: 'Credit Card' },
-  loan:        { icon: FileText,   color: '#F97316', label: 'Loan' },
+  loan:        { icon: FileText,   color: '#F97316', label: 'Loan / Debt' },
   investment:  { icon: TrendingUp, color: '#10B981', label: 'Investment' },
   crypto:      { icon: Bitcoin,    color: '#F59E0B', label: 'Crypto' },
   business:    { icon: Briefcase,  color: '#6366F1', label: 'Business' },
-  custom:      { icon: Wallet,     color: '#EC4899', label: 'Custom' },
+  custom:      { icon: Wallet,     color: '#EC4899', label: 'Other' },
 }
 
-const QUICK_TYPES: AccountType[] = ['checking', 'savings', 'cash', 'credit_card', 'investment', 'crypto']
+const ASSET_QUICK_TYPES: AccountType[] = ['checking', 'savings', 'cash', 'investment', 'crypto', 'business']
+const LIABILITY_QUICK_TYPES: AccountType[] = ['credit_card', 'loan']
+
+const isLiabilityType = (type: string) => type === 'credit_card' || type === 'loan'
+
+function AccountRow({ account, onClick, index }: { account: Account; onClick: () => void; index: number }) {
+  const meta = ACCOUNT_META[account.type as AccountType] ?? ACCOUNT_META.custom
+  const isLiability = isLiabilityType(account.type)
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border/50 shadow-sm active:bg-muted/50 cursor-pointer"
+      onClick={onClick}
+    >
+      <div
+        className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+        style={{ backgroundColor: `${account.color ?? meta.color}22` }}
+      >
+        <meta.icon className="w-5 h-5" style={{ color: account.color ?? meta.color }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm truncate">{account.name}</p>
+        <p className="text-xs text-muted-foreground">{meta.label}</p>
+      </div>
+      <p className={cn('font-bold text-sm shrink-0', isLiability ? 'text-destructive' : '')}>
+        {formatCurrency(account.balance, account.currency)}
+      </p>
+      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+    </motion.div>
+  )
+}
 
 export function AccountsContent() {
   const [showForm, setShowForm] = useState(false)
@@ -36,12 +68,17 @@ export function AccountsContent() {
   const currency = useCurrency()
 
   const activeAccounts = accounts.filter(a => a.is_active)
+  const assetAccounts = activeAccounts.filter(a => !isLiabilityType(a.type))
+  const liabilityAccounts = activeAccounts.filter(a => isLiabilityType(a.type))
 
-  const pieData = activeAccounts
-    .filter(a => a.balance !== 0)
+  const totalAssets = assetAccounts.reduce((s, a) => s + (a.balance ?? 0), 0)
+  const totalLiabilities = liabilityAccounts.reduce((s, a) => s + Math.abs(a.balance ?? 0), 0)
+
+  const pieData = assetAccounts
+    .filter(a => a.balance > 0)
     .map(a => ({
       name: a.name,
-      value: Math.abs(a.balance),
+      value: a.balance,
       color: a.color ?? ACCOUNT_META[a.type as AccountType]?.color ?? '#3B82F6',
     }))
 
@@ -53,7 +90,7 @@ export function AccountsContent() {
   return (
     <div className="flex flex-col min-h-full pb-4">
 
-      {/* Donut chart + balance */}
+      {/* Net Worth hero */}
       <div className="flex flex-col items-center pt-4 pb-2 px-4">
         {isLoading ? (
           <Skeleton className="w-[180px] h-[180px] rounded-full" />
@@ -67,7 +104,7 @@ export function AccountsContent() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <p className="text-[11px] text-muted-foreground">Total Balance</p>
+              <p className="text-[11px] text-muted-foreground">Net Worth</p>
               <p className="text-base font-bold leading-tight">{formatCompactCurrency(totalBalance, currency)}</p>
             </div>
           </div>
@@ -77,16 +114,23 @@ export function AccountsContent() {
             <p className="text-xs text-muted-foreground">No accounts yet</p>
           </div>
         )}
+
+        {/* Assets / Liabilities summary strip */}
+        {!isLoading && activeAccounts.length > 0 && (
+          <div className="flex gap-3 mt-3 w-full">
+            <div className="flex-1 flex flex-col items-center p-2.5 rounded-2xl bg-green-500/8 border border-green-500/20">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Assets</p>
+              <p className="text-sm font-bold text-green-600 dark:text-green-400">{formatCompactCurrency(totalAssets, currency)}</p>
+            </div>
+            <div className="flex-1 flex flex-col items-center p-2.5 rounded-2xl bg-destructive/8 border border-destructive/20">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Debts</p>
+              <p className="text-sm font-bold text-destructive">{formatCompactCurrency(totalLiabilities, currency)}</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Accounts list */}
-      <div className="px-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">My Accounts</h2>
-          <button className="flex items-center gap-1 text-primary text-sm font-medium" onClick={() => openAdd()}>
-            <Plus className="w-3.5 h-3.5" /> Add Account
-          </button>
-        </div>
+      <div className="px-4 space-y-5 mt-2">
 
         {isLoading ? (
           <div className="space-y-2">
@@ -98,57 +142,116 @@ export function AccountsContent() {
               </div>
             ))}
           </div>
+
         ) : activeAccounts.length === 0 ? (
           /* Quick setup when empty */
-          <div>
-            <p className="text-sm text-muted-foreground mb-3">Tap a type to add your first account:</p>
-            <div className="grid grid-cols-3 gap-2">
-              {QUICK_TYPES.map(type => {
-                const meta = ACCOUNT_META[type]
-                return (
-                  <button
-                    key={type}
-                    onClick={() => openAdd(type)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border border-border/50 shadow-sm active:scale-95 transition-transform"
-                  >
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${meta.color}22` }}>
-                      <meta.icon className="w-6 h-6" style={{ color: meta.color }} />
-                    </div>
-                    <span className="text-xs font-medium text-center leading-tight">{meta.label}</span>
-                  </button>
-                )
-              })}
+          <div className="space-y-5">
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">My Money (Assets)</p>
+              <div className="grid grid-cols-3 gap-2">
+                {ASSET_QUICK_TYPES.map(type => {
+                  const meta = ACCOUNT_META[type]
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => openAdd(type)}
+                      className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-border/50 shadow-sm active:scale-95 transition-transform"
+                    >
+                      <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${meta.color}22` }}>
+                        <meta.icon className="w-5 h-5" style={{ color: meta.color }} />
+                      </div>
+                      <span className="text-[11px] font-medium text-center leading-tight">{meta.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">I Owe (Liabilities)</p>
+              <div className="grid grid-cols-2 gap-2">
+                {LIABILITY_QUICK_TYPES.map(type => {
+                  const meta = ACCOUNT_META[type]
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => openAdd(type)}
+                      className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-border/50 shadow-sm active:scale-95 transition-transform"
+                    >
+                      <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${meta.color}22` }}>
+                        <meta.icon className="w-5 h-5" style={{ color: meta.color }} />
+                      </div>
+                      <span className="text-[11px] font-medium text-center leading-tight">{meta.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <button
+              className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-sm text-muted-foreground"
+              onClick={() => openAdd()}
+            >
+              + Add Account
+            </button>
           </div>
+
         ) : (
-          <div className="space-y-2">
-            {activeAccounts.map((account, i) => {
-              const meta = ACCOUNT_META[account.type as AccountType] ?? ACCOUNT_META.custom
-              const isLiability = account.type === 'credit_card' || account.type === 'loan'
-              return (
-                <motion.div
-                  key={account.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border/50 shadow-sm active:bg-muted/50 cursor-pointer"
-                  onClick={() => setEditAccount(account)}
-                >
-                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${account.color ?? meta.color}22` }}>
-                    <meta.icon className="w-5 h-5" style={{ color: account.color ?? meta.color }} />
+          <>
+            {/* Assets section */}
+            {assetAccounts.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">My Money</p>
+                    <p className="text-base font-bold text-foreground">{formatCurrency(totalAssets, currency)}</p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{account.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{meta.label}</p>
+                  <button
+                    className="flex items-center gap-1 text-primary text-xs font-semibold"
+                    onClick={() => openAdd()}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {assetAccounts.map((account, i) => (
+                    <AccountRow key={account.id} account={account} index={i} onClick={() => setEditAccount(account)} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Liabilities section */}
+            {liabilityAccounts.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">I Owe</p>
+                    <p className="text-base font-bold text-destructive">{formatCurrency(totalLiabilities, currency)}</p>
                   </div>
-                  <p className={cn('font-bold text-sm shrink-0', isLiability ? 'text-destructive' : '')}>
-                    {formatCurrency(account.balance, account.currency)}
-                  </p>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                </motion.div>
-              )
-            })}
-          </div>
+                  <button
+                    className="flex items-center gap-1 text-destructive text-xs font-semibold"
+                    onClick={() => openAdd('loan')}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {liabilityAccounts.map((account, i) => (
+                    <AccountRow key={account.id} account={account} index={i} onClick={() => setEditAccount(account)} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add account button when there are accounts but need more */}
+            {assetAccounts.length > 0 && liabilityAccounts.length === 0 && (
+              <button
+                className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-sm text-muted-foreground"
+                onClick={() => openAdd()}
+              >
+                + Add Another Account
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -182,7 +285,7 @@ export function AccountsContent() {
                 onCancel={() => setEditAccount(null)}
               />
               <button
-                className="w-full py-3 text-destructive text-sm font-medium"
+                className="w-full py-3 text-destructive text-sm font-medium mb-6"
                 onClick={() => { deleteAccount(editAccount.id); setEditAccount(null) }}
               >
                 Delete Account

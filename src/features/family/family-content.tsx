@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingPage } from '@/components/shared/loading-spinner'
 import type { Family, FamilyMember } from '@/types/database'
@@ -152,20 +151,41 @@ export function FamilyContent() {
             <SheetTrigger>
               <Button size="sm" className="gradient-primary border-0 gap-2"><Plus className="w-4 h-4" /> Invite</Button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+            <SheetContent side="bottom" className="h-[96dvh] rounded-t-3xl flex flex-col gap-0 p-0">
               <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>Invite Member</SheetTitle></SheetHeader>
               <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-4">
                 <div className="space-y-2"><Label>Email Address</Label><Input type="email" placeholder="partner@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} /></div>
                 <div className="space-y-2">
                   <Label>Role</Label>
-                  <Select value={inviteRole} onValueChange={(v: string | null) => setInviteRole(v as typeof inviteRole)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin — can manage everything</SelectItem>
-                      <SelectItem value="member">Member — can add transactions</SelectItem>
-                      <SelectItem value="viewer">Viewer — read only</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    {([
+                      { value: 'admin', icon: '👑', label: 'Admin', description: 'Can manage members, budgets, and all settings' },
+                      { value: 'member', icon: '👤', label: 'Member', description: 'Can add and view transactions' },
+                      { value: 'viewer', icon: '👁', label: 'Viewer', description: 'Read-only access, cannot make changes' },
+                    ] as const).map(role => (
+                      <button
+                        key={role.value}
+                        type="button"
+                        onClick={() => setInviteRole(role.value)}
+                        className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-colors ${
+                          inviteRole === role.value
+                            ? 'border-primary bg-primary/8'
+                            : 'border-border bg-muted/30 active:bg-muted/60'
+                        }`}
+                      >
+                        <span className="text-2xl shrink-0">{role.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-semibold text-sm ${inviteRole === role.value ? 'text-primary' : ''}`}>{role.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{role.description}</p>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                          inviteRole === role.value ? 'border-primary bg-primary' : 'border-border'
+                        }`}>
+                          {inviteRole === role.value && <div className="w-2 h-2 rounded-full bg-white" />}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
                   <Button variant="outline" onClick={() => setShowInvite(false)} className="flex-1 h-12 rounded-2xl">Cancel</Button>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, ListChecks, Check, Trash2 } from 'lucide-react'
+import { Plus, ListChecks, Check, Trash2, Pencil } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -29,6 +29,8 @@ export function TasksContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [newTask, setNewTask] = useState({ title: '', description: '', due_date: '', priority: 'medium' as Priority, category: '' })
+  const [editTask, setEditTask] = useState<Task | null>(null)
+  const [editForm, setEditForm] = useState({ title: '', description: '', due_date: '', priority: 'medium' as Priority, category: '' })
   const supabase = createClient()
 
   const fetchTasks = useCallback(async () => {
@@ -60,6 +62,32 @@ export function TasksContent() {
   const deleteTask = async (id: string) => {
     await supabase.from('tasks').update({ deleted_at: new Date().toISOString() }).eq('id', id)
     toast.success('Task deleted')
+    fetchTasks()
+  }
+
+  const openEdit = (task: Task) => {
+    setEditForm({
+      title: task.title,
+      description: task.description ?? '',
+      due_date: task.due_date ?? '',
+      priority: task.priority,
+      category: task.category ?? '',
+    })
+    setEditTask(task)
+  }
+
+  const saveEdit = async () => {
+    if (!editTask || !editForm.title.trim()) return
+    const { error } = await supabase.from('tasks').update({
+      title: editForm.title,
+      description: editForm.description || null,
+      due_date: editForm.due_date || null,
+      priority: editForm.priority,
+      category: editForm.category || null,
+    }).eq('id', editTask.id)
+    if (error) { toast.error(error.message); return }
+    toast.success('Task updated')
+    setEditTask(null)
     fetchTasks()
   }
 
@@ -131,9 +159,14 @@ export function TasksContent() {
                           {task.due_date && <span className="text-[10px] text-muted-foreground">Due {formatDate(task.due_date)}</span>}
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-destructive" onClick={() => deleteTask(task.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground" onClick={() => openEdit(task)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-destructive" onClick={() => deleteTask(task.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -160,6 +193,37 @@ export function TasksContent() {
           )}
         </>
       )}
+      <Sheet open={!!editTask} onOpenChange={open => !open && setEditTask(null)}>
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30"><SheetTitle>Edit Task</SheetTitle></SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-4">
+            <div className="space-y-2"><Label>Title</Label><Input placeholder="e.g., Pay credit card bill" value={editForm.title} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Description</Label><Textarea rows={2} value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input type="date" value={editForm.due_date} onChange={e => setEditForm(p => ({ ...p, due_date: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Select value={editForm.priority} onValueChange={(v) => setEditForm(p => ({ ...p, priority: v as Priority }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="sticky bottom-0 bg-background/98 backdrop-blur-sm flex gap-2 pt-3 pb-6 border-t border-border/20 mt-4">
+              <Button type="button" variant="outline" onClick={() => setEditTask(null)} className="flex-1 h-12 rounded-2xl">Cancel</Button>
+              <Button onClick={saveEdit} className="flex-1 h-12 rounded-2xl gradient-primary border-0 font-semibold">Save</Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
