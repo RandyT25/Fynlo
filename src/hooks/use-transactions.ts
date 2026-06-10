@@ -28,7 +28,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
 
     let query = supabase
       .from('transactions')
-      .select('*, account:accounts!account_id(id,name,color,icon,type), to_account:accounts!to_account_id(id,name,color,icon,type), category:categories!category_id(id,name,icon,color,parent_id)', { count: 'exact' })
+      .select('*, account:accounts!account_id(id,name,color,icon,type), to_account:accounts!to_account_id(id,name,color,icon,type)', { count: 'exact' })
       .is('deleted_at', null)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -41,12 +41,21 @@ export function useTransactions(filters: TransactionFilters = {}) {
     if (filters.search) query = query.ilike('description', `%${filters.search}%`)
     if (filters.limit) query = query.limit(filters.limit)
 
-    const { data, error: err, count: total } = await query
+    const [{ data, error: err, count: total }, { data: cats }] = await Promise.all([
+      query,
+      supabase.from('categories').select('id,name,icon,color,parent_id').is('deleted_at', null),
+    ])
 
     if (err) {
       setError(err.message)
     } else {
-      setTransactions((data as Transaction[]) ?? [])
+      const catById: Record<string, any> = {}
+      for (const c of (cats ?? [])) catById[c.id] = c
+      const merged = (data ?? []).map((t: any) => ({
+        ...t,
+        category: t.category_id ? (catById[t.category_id] ?? null) : null,
+      }))
+      setTransactions(merged as Transaction[])
       setCount(total ?? 0)
     }
     setIsLoading(false)

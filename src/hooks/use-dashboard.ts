@@ -44,14 +44,23 @@ export function useDashboard() {
       { data: budgets },
       { data: goals },
       { data: bills },
+      { data: cats },
     ] = await Promise.all([
       supabase.from('accounts').select('*').is('deleted_at', null).eq('is_active', true),
-      supabase.from('transactions').select('*, account:accounts!account_id(id,name,color,icon,type), category:categories!category_id(id,name,icon,color)').is('deleted_at', null).order('date', { ascending: false }).limit(10),
+      supabase.from('transactions').select('*, account:accounts!account_id(id,name,color,icon,type)').is('deleted_at', null).order('date', { ascending: false }).limit(10),
       supabase.from('transactions').select('type,amount').is('deleted_at', null).gte('date', monthStart).lte('date', monthEnd),
       supabase.from('budgets').select('*, category:categories(id,name,icon,color)').is('deleted_at', null).eq('is_active', true),
       supabase.from('goals').select('*').is('deleted_at', null).eq('is_completed', false).order('priority', { ascending: false }).limit(6),
       supabase.from('bill_reminders').select('*').is('deleted_at', null).eq('is_completed', false).gte('due_date', format(now, 'yyyy-MM-dd')).order('due_date', { ascending: true }).limit(5),
+      supabase.from('categories').select('id,name,icon,color').is('deleted_at', null),
     ])
+
+    const catById: Record<string, any> = {}
+    for (const c of (cats ?? [])) catById[c.id] = c
+    const recentWithCats = (recentTxn ?? []).map((t: any) => ({
+      ...t,
+      category: t.category_id ? (catById[t.category_id] ?? null) : null,
+    }))
 
     const accts: any[] = accounts ?? []
     const totalBalance = accts.reduce((s: number, a: any) => {
@@ -70,7 +79,7 @@ export function useDashboard() {
 
     setData({
       accounts: accts,
-      recentTransactions: (recentTxn as Transaction[]) ?? [],
+      recentTransactions: recentWithCats as Transaction[],
       budgets: (budgets as Budget[]) ?? [],
       goals: (goals as Goal[]) ?? [],
       upcomingBills: (bills as BillReminder[]) ?? [],
