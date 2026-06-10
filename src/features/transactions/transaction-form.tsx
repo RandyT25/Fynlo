@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { format } from 'date-fns'
@@ -34,10 +34,16 @@ interface TransactionFormProps {
 
 export function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; color: string; type: string }>>([])
   const { accounts } = useAccounts()
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
+
+  useEffect(() => {
+    supabase.from('categories').select('id,name,color,type').is('deleted_at', null).order('order_index')
+      .then(({ data }: { data: Array<{ id: string; name: string; color: string; type: string }> | null }) => setCategories(data ?? []))
+  }, [])
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransactionInput>({
     resolver: zodResolver(transactionSchema),
@@ -65,7 +71,12 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
   })
 
   const type = watch('type')
+  const categoryId = watch('category_id')
   const isTransfer = type === 'transfer'
+
+  const filteredCategories = categories.filter(c =>
+    type === 'income' || type === 'refund' ? c.type === 'income' : c.type === 'expense'
+  )
 
   const onSubmit = async (data: TransactionInput) => {
     setIsLoading(true)
@@ -108,6 +119,31 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
           </button>
         ))}
       </div>
+
+      {/* Category */}
+      {!isTransfer && filteredCategories.length > 0 && (
+        <div className="space-y-2">
+          <Label>Category <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+            {filteredCategories.map(cat => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setValue('category_id', categoryId === cat.id ? null : cat.id)}
+                className={cn(
+                  'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                  categoryId === cat.id
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground'
+                )}
+              >
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Amount */}
       <div className="space-y-2">
