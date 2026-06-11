@@ -106,8 +106,8 @@ export function DashboardContent() {
         </div>
       </div>
 
-      {/* Recent transactions */}
-      <div className="flex-1 px-4 pt-5 pb-4">
+      {/* Recent transactions — pb-24 keeps the last row clear of the FAB */}
+      <div className="flex-1 px-4 pt-5 pb-24">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-base">Recent Transactions</h2>
           <a href="/transactions" className="flex items-center gap-0.5 text-primary text-sm font-medium">
@@ -176,7 +176,8 @@ export function DashboardContent() {
 
       {/* FAB */}
       <button
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center z-40 active:scale-95 transition-transform"
+        className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
         onClick={() => setShowAdd(true)}
       >
         <Plus className="w-6 h-6" />

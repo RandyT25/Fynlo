@@ -99,6 +99,7 @@ src/
 │   │   ├── empty-state.tsx      # Reusable empty state with icon + CTA
 │   │   └── error-state.tsx      # Error display with retry button
 │   └── ui/                  # Shadcn generated components (don't edit manually)
+│       └── amount-input.tsx # Custom formatted number input — shows dots as thousands separator while typing
 │
 ├── features/                # Feature-based architecture — one folder per feature
 │   ├── dashboard/           # Balance card, stat cards, charts, previews
@@ -151,10 +152,15 @@ src/
 
 supabase/
 └── migrations/
-    ├── 001_initial_schema.sql   # All tables, enums, triggers, RLS, seed categories
-    ├── 002_fix_rls_policies.sql # Fixed infinite recursion in family_members RLS
-    ├── 003_grant_permissions.sql # GRANT statements for anon/authenticated roles
-    └── 004_fix_auth_trigger.sql # Fixed handle_new_user trigger for Supabase Auth
+    ├── 001_initial_schema.sql        # All tables, enums, triggers, RLS, seed categories
+    ├── 002_fix_rls_policies.sql      # Fixed infinite recursion in family_members RLS
+    ├── 003_grant_permissions.sql     # GRANT statements for anon/authenticated roles
+    ├── 004_fix_auth_trigger.sql      # Fixed handle_new_user trigger for Supabase Auth
+    ├── 005_backfill_missing_profiles.sql
+    ├── 006_storage_avatars.sql
+    ├── 007_add_loan_category.sql
+    ├── 008_seed_subcategories.sql
+    └── 009_fix_loan_balance_and_original.sql  # Fixes transfer→loan trigger direction; adds original_balance column
 
 public/
 ├── manifest.json            # PWA manifest
@@ -306,8 +312,14 @@ notification_type: bill_due | budget_exceeded | goal_milestone | subscription_re
 ### Key Triggers
 
 - `on_auth_user_created` — auto-creates a `profiles` row when a user signs up
-- `on_transaction_change` — auto-updates `accounts.balance` on every transaction insert/update/delete
+- `on_transaction_change` → `update_account_balance()` — updates `accounts.balance` on every transaction change:
+  - income/refund → balance +
+  - expense → balance −
+  - transfer from account → balance −; transfer **to** asset account → balance +; transfer **to** liability (loan/credit_card) → balance − (paying off debt reduces it)
 - `update_*_updated_at` — auto-updates `updated_at` timestamp on every table
+
+### `accounts` table — extra columns
+- `original_balance DECIMAL` — for loan/credit_card accounts: the original total borrowed. Used to compute "Paid = original − balance". NULL for non-loan accounts or loans created before migration 009.
 
 ### RLS Policy Pattern
 
@@ -375,16 +387,24 @@ Sign Out:
 - **Types:** income, expense, transfer, refund
 - **Features:** bulk select+delete, CSV export, search, type filter
 - **Form:** `features/transactions/transaction-form.tsx`
+  - Accepts `initialValues?: Partial<TransactionInput>` to pre-fill fields (used by budget "Add Transaction")
+  - Category picker is two-level pills: parent row → subcategory row when expanded
+  - Amount input uses `AmountInput` component (dot-formatted for IDR)
 
 ### Accounts
 - **Types:** cash, checking, savings, credit_card, loan, investment, crypto, business, custom
 - **Net worth:** assets minus liabilities (credit cards and loans counted negative)
-- **Grouped display:** Cash & Bank | Credit & Loans | Investments | Other
+- **Grouped display:** "My Money" (assets) | "I Owe" (liabilities)
+- **Loan tracking:** loan accounts store `original_balance` (total loan amount); the card shows "Owe $X · Paid $Y" when set
+- **Loan form:** create asks for "Total Loan Amount" + optional "Amount Already Paid" → computes starting balance automatically
+- **Transfer to loan:** correctly reduces loan balance (debt decreases when you pay it off) — fixed in migration 009
 
 ### Budgets
 - **Period:** monthly, quarterly, yearly, custom
 - **Rollover:** unused budget carries to next period
 - **Utilization:** green (<80%) → yellow (80-99%) → red (over 100%)
+- **Category picker:** two-level pill picker (same as transaction form), shows only expense categories
+- **Add Transaction button:** each budget card has an inline "Add Transaction" button that opens TransactionForm pre-filled with that budget's category and type=expense
 
 ### Goals
 - **Types:** savings, debt, custom
@@ -462,6 +482,52 @@ const { register, handleSubmit, setValue, watch, formState: { errors } } = useFo
 // Selects need manual setValue
 <Select onValueChange={(v: string | null) => setValue('field', v as any)}>
 ```
+
+### FAB (Floating Action Button) pattern
+**Never use `bottom-20` or any fixed Tailwind bottom class on a FAB.** The mobile nav bar's height includes `env(safe-area-inset-bottom)` for iPhones with home indicators, so a fixed pixel offset will clip the FAB.
+
+Always use:
+```tsx
+<button
+  className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
+  style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
+>
+  <Plus className="w-6 h-6" />
+</button>
+```
+
+Also add `pb-24` (or `pb-28`) to the scrollable list container so the last item isn't hidden behind the FAB.
+
+### AmountInput component
+Use `AmountInput` (not a plain `<input type="number">`) for all monetary inputs:
+
+```tsx
+import { AmountInput } from '@/components/ui/amount-input'
+
+<AmountInput
+  value={watch('amount') || 0}
+  onChange={v => setValue('amount', v, { shouldValidate: true })}
+  currency={userCurrency}          // determines thousands separator style
+  currencySymbol={currencySymbol}  // prefix label (Rp, $, €…)
+  placeholder="0"
+/>
+```
+
+- **IDR / VND / JPY / KRW** → dot thousands, no decimals (`11.000.000`)
+- **USD / EUR / GBP / etc.** → comma thousands, dot decimal (`1,050.50`)
+- Passes a raw `number` to `onChange`, so form schema stays `z.number()`
+
+### Number formatting
+`formatCurrency(amount, currency)` in `lib/utils/format.ts` selects the locale automatically:
+
+| Currency | Locale | Example |
+|---|---|---|
+| IDR | id-ID | Rp 11.000.000 |
+| MYR, THB, PHP, VND | local | dot thousands |
+| JPY, KRW | ja-JP / ko-KR | ¥ 11,000 |
+| USD, EUR, GBP | en-US | $11,000.00 |
+
+Never hardcode `'en-US'` locale in number formatting — always pass the currency to `formatCurrency`.
 
 ### Animations
 ```tsx
@@ -595,6 +661,12 @@ The app uses `class` strategy (`dark` class on `<html>`). Managed by `next-theme
 | `z.coerce.number()` breaks RHF | Coercion creates `unknown` input type | Use `z.number()` + `valueAsNumber: true` on input |
 | PWA icons 404 | Icons directory was empty | SVG placeholder icons generated in `public/icons/` |
 | `proxy.ts` deprecation warning | Old `middleware.ts` name used | Renamed to `proxy.ts`, export renamed to `proxy` |
+| Loan balance increases on transfer payment | Trigger always added to `to_account` balance | Migration 009: subtract from liability `to_account` instead |
+| Budget category shows UUID | `Select` defaultValue was UUID with no matching label | Replaced with two-level pill picker, no Select needed |
+| FAB hides last list item | Insufficient bottom padding on scrollable containers | `pb-24` (dashboard) and `pb-28` (budgets) on list containers |
+| FAB clipped by bottom nav on iPhone | `bottom-20` (fixed 80px) doesn't account for safe-area-inset | Use `style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}` on all FABs |
+| IDR shows commas (11,000,000) | `formatCurrency` used `en-US` locale for all currencies | `CURRENCY_LOCALE` map picks `id-ID` for IDR → dots (11.000.000) |
+| Amount input no live formatting | `type="number"` inputs don't format while typing | New `AmountInput` component with text input + dot-thousands formatter |
 
 ---
 
@@ -692,5 +764,5 @@ npm run lint       # ESLint
 
 ---
 
-*Last updated: June 2026*  
+*Last updated: June 11 2026*  
 *Built with Claude Code*

@@ -12,9 +12,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { AmountInput } from '@/components/ui/amount-input'
 import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { cn } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils/format'
 import type { Account } from '@/types/database'
 
 const ASSET_TYPES = [
@@ -49,6 +51,10 @@ interface AccountFormProps {
 
 export function AccountForm({ account, presetType, onSuccess, onCancel }: AccountFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [originalAmount, setOriginalAmount] = useState<number | ''>(
+    account?.original_balance ?? ''
+  )
+  const [alreadyPaid, setAlreadyPaid] = useState<number | ''>('')
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
@@ -76,18 +82,27 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { toast.error('Not authenticated'); setIsLoading(false); return }
 
+    const isLoanType = data.type === 'loan' || data.type === 'credit_card'
+
     if (account) {
       const { error } = await supabase.from('accounts').update({
         name: data.name, type: data.type, currency: data.currency,
         color: data.color, icon: data.icon,
         institution: data.institution ?? null, notes: data.notes ?? null,
         include_in_net_worth: data.include_in_net_worth,
+        ...(isLoanType && originalAmount !== '' ? { original_balance: originalAmount } : {}),
       }).eq('id', account.id)
       if (error) { toast.error(error.message); setIsLoading(false); return }
       toast.success('Account updated')
     } else {
+      // For loans: balance = original - already paid. For others: use the balance field directly.
+      const startingBalance = isLoanType && originalAmount !== ''
+        ? (originalAmount as number) - (alreadyPaid !== '' ? (alreadyPaid as number) : 0)
+        : data.balance
+
       const { error } = await supabase.from('accounts').insert({
-        name: data.name, type: data.type, balance: data.balance,
+        name: data.name, type: data.type, balance: startingBalance,
+        original_balance: isLoanType && originalAmount !== '' ? (originalAmount as number) : null,
         currency: data.currency, color: data.color, icon: data.icon,
         institution: data.institution ?? null, notes: data.notes ?? null,
         include_in_net_worth: data.include_in_net_worth,
@@ -204,37 +219,105 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
         </div>
       </div>
 
-      {/* Starting Balance — only on create */}
+      {/* Starting Balance / Loan fields — only on create */}
       {!account ? (
-        <div className="space-y-2">
-          <Label>{isLiability ? 'Current Amount Owed' : 'Starting Balance'}</Label>
-          <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 transition-all">
-            <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
-              {currencySymbol}
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              placeholder="0.00"
-              className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              {...register('balance', { valueAsNumber: true })}
-            />
+        isLiability ? (
+          <div className="space-y-3">
+            {/* Original loan amount */}
+            <div className="space-y-2">
+              <Label>Total Loan Amount</Label>
+              <AmountInput
+                value={originalAmount === '' ? 0 : (originalAmount as number)}
+                onChange={v => setOriginalAmount(v || '')}
+                currency={selectedCurrency}
+                currencySymbol={currencySymbol}
+                placeholder="0"
+              />
+              <p className="text-xs text-muted-foreground">The full amount of the loan (e.g. 10.000.000)</p>
+            </div>
+
+            {/* Already paid */}
+            <div className="space-y-2">
+              <Label>Amount Already Paid <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <AmountInput
+                value={alreadyPaid === '' ? 0 : (alreadyPaid as number)}
+                onChange={v => setAlreadyPaid(v || '')}
+                currency={selectedCurrency}
+                currencySymbol={currencySymbol}
+                placeholder="0"
+              />
+              <p className="text-xs text-muted-foreground">How much you've paid so far before tracking in Fynlo</p>
+            </div>
+
+            {/* Computed summary */}
+            {originalAmount !== '' && (
+              <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-destructive/8 border border-destructive/20">
+                <p className="text-sm text-muted-foreground">Remaining balance</p>
+                <p className="text-sm font-bold text-destructive">
+                  {formatCurrency((originalAmount as number) - (alreadyPaid !== '' ? (alreadyPaid as number) : 0), selectedCurrency)}
+                </p>
+              </div>
+            )}
+
+            {/* hidden to satisfy schema — actual balance computed in onSubmit */}
+            <input type="hidden" {...register('balance', { valueAsNumber: true })} />
           </div>
-          <p className="text-xs text-muted-foreground">
-            {isLiability ? 'How much do you currently owe?' : 'Balance before you started tracking in Fynlo'}
-          </p>
-          {errors.balance && <p className="text-xs text-destructive">{errors.balance.message}</p>}
-        </div>
+        ) : (
+          <div className="space-y-2">
+            <Label>Starting Balance</Label>
+            <AmountInput
+              value={watch('balance') || 0}
+              onChange={v => setValue('balance', v, { shouldValidate: true })}
+              currency={selectedCurrency}
+              currencySymbol={currencySymbol}
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">Balance before you started tracking in Fynlo</p>
+            {errors.balance && <p className="text-xs text-destructive">{errors.balance.message}</p>}
+          </div>
+        )
       ) : (
         <>
           <input type="hidden" {...register('balance', { valueAsNumber: true })} />
-          <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-muted/40">
-            <p className="text-sm text-muted-foreground">Current Balance</p>
-            <p className={cn('text-sm font-bold', isLiability && 'text-destructive')}>
-              {currencySymbol}{account.balance.toLocaleString()}
-            </p>
-          </div>
+          {/* For loans: show owe + paid breakdown with editable original amount */}
+          {isLiability ? (
+            <div className="space-y-2">
+              {/* Editable original loan amount */}
+              <div className="space-y-1.5">
+                <Label>Total Loan Amount <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <AmountInput
+                  value={originalAmount === '' ? 0 : (originalAmount as number)}
+                  onChange={v => setOriginalAmount(v || '')}
+                  currency={selectedCurrency}
+                  currencySymbol={currencySymbol}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">Set to see your "Paid" progress</p>
+              </div>
+
+              <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-muted/40">
+                <p className="text-sm text-muted-foreground">Remaining (owe)</p>
+                <p className="text-sm font-bold text-destructive">
+                  {formatCurrency(account.balance, account.currency)}
+                </p>
+              </div>
+              {originalAmount !== '' && (
+                <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-muted/40">
+                  <p className="text-sm text-muted-foreground">Paid so far</p>
+                  <p className="text-sm font-bold text-green-600">
+                    {formatCurrency((originalAmount as number) - account.balance, account.currency)}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-muted/40">
+              <p className="text-sm text-muted-foreground">Current Balance</p>
+              <p className="text-sm font-bold">
+                {formatCurrency(account.balance, account.currency)}
+              </p>
+            </div>
+          )}
         </>
       )}
 

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, PiggyBank, AlertCircle, CheckCircle2, ChevronRight, ChevronDown } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, PiggyBank, AlertCircle, CheckCircle2, ChevronRight, Receipt } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
 import { useCurrency } from '@/hooks/use-currency'
@@ -14,15 +14,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { TransactionForm } from '@/features/transactions/transaction-form'
+import { AmountInput } from '@/components/ui/amount-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingPage } from '@/components/shared/loading-spinner'
-import { formatCurrency, formatPercent } from '@/lib/utils/format'
+import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 import type { Budget, Category } from '@/types/database'
 
@@ -39,6 +38,7 @@ export function BudgetsContent() {
   const [showForm, setShowForm] = useState(false)
   const [editBudget, setEditBudget] = useState<Budget | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [addTxnBudget, setAddTxnBudget] = useState<BudgetWithMeta | null>(null)
   const currency = useCurrency()
   const supabase = createClient()
 
@@ -81,7 +81,7 @@ export function BudgetsContent() {
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="px-4 pt-4 pb-4">
+    <div className="px-4 pt-4 pb-28">
       {/* Summary */}
       <div className="flex gap-3 mb-5">
         <div className="flex-1 gradient-primary rounded-2xl p-4 text-white">
@@ -121,34 +121,46 @@ export function BudgetsContent() {
 
             return (
               <motion.div key={budget.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <div
-                  className="bg-card rounded-3xl p-4 shadow-sm border border-border/50 active:scale-[0.99] transition-transform cursor-pointer"
-                  onClick={() => { setEditBudget(budget); setShowForm(true) }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${barColor}22` }}>
-                        {isOver ? <AlertCircle className="w-5 h-5 text-destructive" /> : <CheckCircle2 className="w-5 h-5" style={{ color: barColor }} />}
+                <div className="bg-card rounded-3xl p-4 shadow-sm border border-border/50">
+                  {/* Tappable budget info — opens edit */}
+                  <div
+                    className="active:opacity-70 transition-opacity cursor-pointer"
+                    onClick={() => { setEditBudget(budget); setShowForm(true) }}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${barColor}22` }}>
+                          {isOver ? <AlertCircle className="w-5 h-5 text-destructive" /> : <CheckCircle2 className="w-5 h-5" style={{ color: barColor }} />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{budget.category?.name ?? budget.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{budget.period}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm">{budget.category?.name ?? budget.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{budget.period}</p>
+                      <div className="text-right">
+                        <p className="font-bold text-sm">{formatCurrency(budget.spent, currency)}</p>
+                        <p className="text-xs text-muted-foreground">/ {formatCurrency(budget.amount, currency)}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm">{formatCurrency(budget.spent, currency)}</p>
-                      <p className="text-xs text-muted-foreground">/ {formatCurrency(budget.amount, currency)}</p>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(budget.utilization, 100)}%`, backgroundColor: barColor }} />
+                    </div>
+                    <div className="flex justify-between mt-1.5">
+                      <span className="text-[11px] text-muted-foreground">{Math.round(Math.min(budget.utilization, 100))}% used</span>
+                      <span className={cn('text-[11px] font-medium', remaining >= 0 ? 'text-green-500' : 'text-destructive')}>
+                        {remaining >= 0 ? `${formatCurrency(remaining, currency)} left` : `${formatCurrency(Math.abs(remaining), currency)} over`}
+                      </span>
                     </div>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(budget.utilization, 100)}%`, backgroundColor: barColor }} />
-                  </div>
-                  <div className="flex justify-between mt-1.5">
-                    <span className="text-[11px] text-muted-foreground">{Math.round(Math.min(budget.utilization, 100))}% used</span>
-                    <span className={cn('text-[11px] font-medium', remaining >= 0 ? 'text-green-500' : 'text-destructive')}>
-                      {remaining >= 0 ? `${formatCurrency(remaining, currency)} left` : `${formatCurrency(Math.abs(remaining), currency)} over`}
-                    </span>
-                  </div>
+
+                  {/* Add transaction button */}
+                  <button
+                    className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-2xl bg-primary/10 active:bg-primary/20 transition-colors text-primary text-xs font-semibold"
+                    onClick={(e) => { e.stopPropagation(); setAddTxnBudget(budget) }}
+                  >
+                    <Receipt className="w-3.5 h-3.5" />
+                    Add Transaction
+                  </button>
                 </div>
               </motion.div>
             )
@@ -178,6 +190,27 @@ export function BudgetsContent() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Add transaction for a specific budget */}
+      <Sheet open={!!addTxnBudget} onOpenChange={open => { if (!open) setAddTxnBudget(null) }}>
+        <SheetContent side="bottom" className="h-[92dvh] rounded-t-3xl flex flex-col gap-0 p-0">
+          <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b border-border/30">
+            <SheetTitle>Add Transaction — {addTxnBudget?.category?.name ?? addTxnBudget?.name}</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+            {addTxnBudget && (
+              <TransactionForm
+                initialValues={{
+                  type: 'expense',
+                  category_id: addTxnBudget.category_id ?? undefined,
+                }}
+                onSuccess={() => { setAddTxnBudget(null); fetchData() }}
+                onCancel={() => setAddTxnBudget(null)}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
@@ -191,6 +224,8 @@ interface BudgetFormProps {
 
 function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
+  const currency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
 
@@ -202,7 +237,34 @@ function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps
   })
 
   const rollover = watch('rollover_enabled')
-  const parentCategories = categories.filter(c => !c.parent_id)
+  const categoryId = watch('category_id')
+
+  // Only show expense parent categories — budgets track spending
+  const parentCategories = categories.filter(c => c.parent_id === null && c.type === 'expense')
+  const subcategories = selectedParentId ? categories.filter(c => c.parent_id === selectedParentId) : []
+
+  // Initialise selection when editing an existing budget
+  useEffect(() => {
+    if (!budget?.category_id || !categories.length) return
+    const cat = categories.find(c => c.id === budget.category_id)
+    if (!cat) return
+    setSelectedParentId(cat.parent_id ?? cat.id)
+  }, [budget?.category_id, categories])
+
+  const handleParentSelect = (parentId: string) => {
+    const children = categories.filter(c => c.parent_id === parentId)
+    if (parentId === selectedParentId) {
+      setSelectedParentId(null)
+      setValue('category_id', null as any)
+    } else {
+      setSelectedParentId(parentId)
+      setValue('category_id', children.length === 0 ? parentId : null as any)
+    }
+  }
+
+  const handleSubcategorySelect = (childId: string) => {
+    setValue('category_id', categoryId === childId ? null as any : childId)
+  }
 
   const onSubmit = async (data: BudgetInput) => {
     setIsLoading(true)
@@ -230,37 +292,72 @@ function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
       </div>
 
+      {/* Category — same two-level pill picker as transaction form */}
       <div className="space-y-2">
-        <Label>Category (optional)</Label>
-        <Select onValueChange={(v: string | null) => setValue('category_id', v as any)} defaultValue={budget?.category_id ?? undefined}>
-          <SelectTrigger><SelectValue placeholder="All categories" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All categories</SelectItem>
-            {categories.map(c => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.parent_id ? '  └ ' : ''}{c.name}
-              </SelectItem>
+        <Label>Category <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+
+        {/* Parent categories */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+          {parentCategories.map(cat => {
+            const hasChildren = categories.some(c => c.parent_id === cat.id)
+            const isSelected = selectedParentId === cat.id
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => handleParentSelect(cat.id)}
+                className={cn(
+                  'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                  isSelected
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground'
+                )}
+              >
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                {cat.name}
+                {hasChildren && (
+                  <ChevronRight className={cn('w-3 h-3 transition-transform', isSelected && 'rotate-90')} />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Subcategories */}
+        {subcategories.length > 0 && (
+          <div
+            className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5 pl-2 border-l-2"
+            style={{ borderColor: parentCategories.find(c => c.id === selectedParentId)?.color ?? '#6B7280' }}
+          >
+            {subcategories.map(sub => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => handleSubcategorySelect(sub.id)}
+                className={cn(
+                  'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                  categoryId === sub.id
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border/60 text-muted-foreground'
+                )}
+              >
+                {sub.name}
+              </button>
             ))}
-          </SelectContent>
-        </Select>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Amount</Label>
-          <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
-            <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
-              {currencySymbol}
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              placeholder="0.00"
-              className="flex-1 px-3 py-2 text-base font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              {...register('amount', { valueAsNumber: true })}
-            />
-          </div>
+          <AmountInput
+            value={watch('amount') || 0}
+            onChange={v => setValue('amount', v, { shouldValidate: true })}
+            currency={currency}
+            currencySymbol={currencySymbol}
+            placeholder="0"
+          />
           {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
         </div>
         <div className="space-y-2">

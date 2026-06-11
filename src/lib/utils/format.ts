@@ -19,12 +19,20 @@ export function getCurrencySymbol(currency = 'USD'): string {
   }
 }
 
+// Maps currency codes to the locale that uses their native number format.
+// IDR → id-ID uses dots as thousands separators (11.000.000).
+const CURRENCY_LOCALE: Record<string, string> = {
+  IDR: 'id-ID', MYR: 'ms-MY', THB: 'th-TH', PHP: 'fil-PH',
+  VND: 'vi-VN', JPY: 'ja-JP', KRW: 'ko-KR', CNY: 'zh-CN', INR: 'hi-IN',
+}
+
 export function formatCurrency(
   amount: number,
   currency = 'USD',
   options: Intl.NumberFormatOptions = {}
 ): string {
-  return new Intl.NumberFormat('en-US', {
+  const locale = CURRENCY_LOCALE[currency] ?? 'en-US'
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -61,8 +69,8 @@ export function formatDateRelative(date: string | Date): string {
   return formatDistanceToNow(d, { addSuffix: true })
 }
 
-export function formatTransactionSign(amount: number, type: string): string {
-  if (type === 'income' || type === 'refund') return `+${formatCurrency(amount)}`
-  if (type === 'expense') return `-${formatCurrency(amount)}`
-  return formatCurrency(amount)
+export function formatTransactionSign(amount: number, type: string, currency = 'USD'): string {
+  if (type === 'income' || type === 'refund') return `+${formatCurrency(amount, currency)}`
+  if (type === 'expense') return `-${formatCurrency(amount, currency)}`
+  return formatCurrency(amount, currency)
 }

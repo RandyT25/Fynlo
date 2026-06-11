@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { AmountInput } from '@/components/ui/amount-input'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
@@ -36,11 +37,12 @@ interface Category {
 
 interface TransactionFormProps {
   transaction?: Transaction
+  initialValues?: Partial<TransactionInput>
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-export function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
+export function TransactionForm({ transaction, initialValues, onSuccess, onCancel }: TransactionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
@@ -82,6 +84,7 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
           currency: userCurrency,
           tags: [] as string[],
           is_reconciled: false,
+          ...initialValues,
         },
   })
 
@@ -129,17 +132,18 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
     }
   }
 
-  // Initialise selectedParentId when editing an existing transaction
+  // Initialise selectedParentId when editing or when initialValues provides a category
   useEffect(() => {
-    if (!transaction?.category_id || !categories.length) return
-    const cat = categories.find(c => c.id === transaction.category_id)
+    const catId = transaction?.category_id ?? initialValues?.category_id
+    if (!catId || !categories.length) return
+    const cat = categories.find(c => c.id === catId)
     if (!cat) return
     if (cat.parent_id) {
       setSelectedParentId(cat.parent_id)
     } else {
       setSelectedParentId(cat.id)
     }
-  }, [transaction?.category_id, categories])
+  }, [transaction?.category_id, initialValues?.category_id, categories])
 
   const onSubmit = async (data: TransactionInput) => {
     setIsLoading(true)
@@ -301,19 +305,12 @@ export function TransactionForm({ transaction, onSuccess, onCancel }: Transactio
       {/* Amount */}
       <div className="space-y-2">
         <Label>Amount</Label>
-        <div className="flex items-stretch overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring transition-all">
-          <span className="flex items-center px-3 text-sm font-semibold text-muted-foreground bg-muted/50 border-r border-input shrink-0 select-none min-w-[2.5rem] justify-center">
-            {currencySymbol}
-          </span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            placeholder="0.00"
-            className="flex-1 px-3 py-2 text-lg font-semibold bg-transparent outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            {...register('amount', { valueAsNumber: true })}
-          />
-        </div>
+        <AmountInput
+          value={watch('amount') || 0}
+          onChange={v => setValue('amount', v, { shouldValidate: true })}
+          currency={watch('currency') || userCurrency}
+          currencySymbol={currencySymbol}
+        />
         {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
       </div>
 

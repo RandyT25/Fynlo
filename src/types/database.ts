@@ -64,6 +64,7 @@ export type Database = {
           name: string
           type: AccountType
           balance: number
+          original_balance: number | null
           currency: string
           color: string
           icon: string
@@ -82,6 +83,7 @@ export type Database = {
           name: string
           type: AccountType
           balance?: number
+          original_balance?: number | null
           currency?: string
           color?: string
           icon?: string
@@ -100,6 +102,7 @@ export type Database = {
           name?: string
           type?: AccountType
           balance?: number
+          original_balance?: number | null
           currency?: string
           color?: string
           icon?: string

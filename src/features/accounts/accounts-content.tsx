@@ -34,6 +34,9 @@ const isLiabilityType = (type: string) => type === 'credit_card' || type === 'lo
 function AccountRow({ account, onClick, index }: { account: Account; onClick: () => void; index: number }) {
   const meta = ACCOUNT_META[account.type as AccountType] ?? ACCOUNT_META.custom
   const isLiability = isLiabilityType(account.type)
+  const hasLoanTracking = isLiability && account.original_balance != null
+  const paid = hasLoanTracking ? account.original_balance! - account.balance : null
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -50,11 +53,25 @@ function AccountRow({ account, onClick, index }: { account: Account; onClick: ()
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm truncate">{account.name}</p>
-        <p className="text-xs text-muted-foreground">{meta.label}</p>
+        {hasLoanTracking ? (
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[11px] text-destructive font-medium">
+              Owe {formatCurrency(account.balance, account.currency)}
+            </span>
+            <span className="text-[11px] text-muted-foreground">·</span>
+            <span className="text-[11px] text-green-600 dark:text-green-500 font-medium">
+              Paid {formatCurrency(paid!, account.currency)}
+            </span>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">{meta.label}</p>
+        )}
       </div>
-      <p className={cn('font-bold text-sm shrink-0', isLiability ? 'text-destructive' : '')}>
-        {formatCurrency(account.balance, account.currency)}
-      </p>
+      {!hasLoanTracking && (
+        <p className={cn('font-bold text-sm shrink-0', isLiability ? 'text-destructive' : '')}>
+          {formatCurrency(account.balance, account.currency)}
+        </p>
+      )}
       <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
     </motion.div>
   )
