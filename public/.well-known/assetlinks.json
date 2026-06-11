@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.fynlo.app",
+    "sha256_cert_fingerprints": [
+      "4A:8C:A3:E4:8C:AE:D0:A4:01:43:00:A7:6C:66:26:06:9F:91:9E:48:18:CB:FD:40:E8:7B:A5:88:E2:40:47:9D"
+    ]
+  }
+}]
