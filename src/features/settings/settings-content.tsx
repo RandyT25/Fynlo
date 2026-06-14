@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import {
   LogOut, ChevronRight, Check, DollarSign,
   Bell, Pencil, ShieldAlert, Globe, Palette, Camera,
@@ -109,8 +110,10 @@ export function SettingsContent() {
     const file = e.target.files?.[0]
     if (!file || !user) return
     if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); return }
+    const ALLOWED: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
+    if (!(file.type in ALLOWED)) { toast.error('Please upload a JPEG, PNG, WebP, or GIF image'); return }
     setIsUploadingAvatar(true)
-    const ext = file.name.split('.').pop()
+    const ext = ALLOWED[file.type]
     const path = `${user.id}/avatar.${ext}`
     const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
     if (upErr) { toast.error(upErr.message); setIsUploadingAvatar(false); return }
@@ -142,7 +145,7 @@ export function SettingsContent() {
           <div className="relative">
             <div className="w-24 h-24 rounded-full ring-4 ring-white/30 bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-xl overflow-hidden">
               {profile?.avatar_url
-                ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                ? <Image src={profile.avatar_url} alt="avatar" width={96} height={96} className="w-full h-full object-cover" />
                 : <span className="text-3xl font-black text-white tracking-tight">{initials}</span>
               }
             </div>
