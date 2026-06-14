@@ -13,6 +13,7 @@ import { goalSchema, type GoalInput } from '@/lib/validations/goal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
@@ -23,7 +24,6 @@ import { cn } from '@/lib/utils'
 import type { Goal } from '@/types/database'
 
 const GOAL_COLORS = ['#3B82F6', '#8B5CF6', '#22C55E', '#EF4444', '#F97316', '#F59E0B', '#10B981', '#EC4899']
-const GOAL_ICONS = ['🎯', '🏠', '✈️', '🚗', '💻', '📚', '🎓', '💍', '🌴', '⛵', '🏋️', '🌟']
 
 export function GoalsContent() {
   const [goals, setGoals] = useState<Goal[]>([])
@@ -33,6 +33,7 @@ export function GoalsContent() {
   const [contributeGoal, setContributeGoal] = useState<Goal | null>(null)
   const [contributeAmount, setContributeAmount] = useState('')
   const [contributeLoading, setContributeLoading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null)
   const currency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
@@ -44,6 +45,7 @@ export function GoalsContent() {
     setIsLoading(false)
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchGoals() }, [fetchGoals])
 
   const toggleComplete = async (goal: Goal) => {
@@ -52,7 +54,6 @@ export function GoalsContent() {
   }
 
   const deleteGoal = async (id: string) => {
-    if (!confirm('Delete this goal?')) return
     await supabase.from('goals').update({ deleted_at: new Date().toISOString() }).eq('id', id)
     toast.success('Goal deleted')
     fetchGoals()
@@ -190,6 +191,14 @@ export function GoalsContent() {
               onSuccess={() => { setShowForm(false); setEditGoal(null); fetchGoals() }}
               onCancel={() => { setShowForm(false); setEditGoal(null) }}
             />
+            {editGoal && (
+              <button
+                className="w-full py-3 text-destructive text-sm font-medium mb-6"
+                onClick={() => { setDeleteTarget(editGoal); setShowForm(false); setEditGoal(null) }}
+              >
+                Delete Goal
+              </button>
+            )}
           </div>
         </SheetContent>
       </Sheet>
@@ -249,6 +258,26 @@ export function GoalsContent() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete goal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{deleteTarget?.name}&rdquo; will be permanently deleted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (deleteTarget) { deleteGoal(deleteTarget.id); setDeleteTarget(null) } }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

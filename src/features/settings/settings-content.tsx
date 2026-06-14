@@ -36,7 +36,9 @@ const CURRENCIES = [
   { code: 'MXN', label: 'Mexican Peso',        flag: '🇲🇽' },
 ]
 
-function buildTimezones() {
+type Timezone = { value: string; label: string; fullLabel: string; offset: string }
+
+function buildTimezones(): Timezone[] {
   try {
     return Intl.supportedValuesOf('timeZone').map(tz => {
       try {
@@ -54,7 +56,6 @@ function buildTimezones() {
   }
 }
 
-const ALL_TIMEZONES = buildTimezones()
 type ActiveSheet = 'profile' | 'currency' | 'timezone' | null
 
 const deviceTimezone = typeof Intl !== 'undefined'
@@ -77,6 +78,7 @@ export function SettingsContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [tzSearch, setTzSearch] = useState('')
+  const [allTimezones, setAllTimezones] = useState<Timezone[]>([])
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -96,6 +98,7 @@ export function SettingsContent() {
     } else {
       toast.success('Saved')
       const base = profile ?? { id: user!.id, email: user!.email! }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setProfile({ ...base, ...fields } as any)
     }
     setIsSaving(false)
@@ -192,7 +195,7 @@ export function SettingsContent() {
             icon={<Globe className="w-[18px] h-[18px]" />}
             iconClass="bg-violet-500 text-white"
             label="Timezone"
-            value={ALL_TIMEZONES.find(t => t.value === timezone)?.label ?? timezone}
+            value={timezone.split('/').pop()?.replace(/_/g, ' ') ?? timezone}
             onPress={() => setOpenSheet('timezone')}
             border
           />
@@ -328,7 +331,7 @@ export function SettingsContent() {
       </Sheet>
 
       {/* ── Timezone Sheet ── */}
-      <Sheet open={openSheet === 'timezone'} onOpenChange={o => { if (!o) { setOpenSheet(null); setTzSearch('') } }}>
+      <Sheet open={openSheet === 'timezone'} onOpenChange={o => { if (o && allTimezones.length === 0) setAllTimezones(buildTimezones()); if (!o) { setOpenSheet(null); setTzSearch('') } }}>
         <SheetContent side="bottom" className="h-[85dvh] rounded-t-3xl flex flex-col">
           <SheetHeader className="pb-3 shrink-0">
             <SheetTitle>Timezone</SheetTitle>
@@ -342,7 +345,7 @@ export function SettingsContent() {
             />
           </div>
           <div className="overflow-y-auto flex-1 space-y-1 pb-4 px-1">
-            {ALL_TIMEZONES
+            {allTimezones
               .filter(tz =>
                 !tzSearch ||
                 tz.value.toLowerCase().includes(tzSearch.toLowerCase()) ||

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 
@@ -11,7 +12,7 @@ export function useAuth() {
   const supabase = createClient()
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: AuthChangeEvent, session: Session | null) => {
       setUser(session?.user ?? null)
 
       if (session?.user) {
@@ -35,6 +36,7 @@ export function useAuth() {
             setProfile(created)
           } else {
             // Upsert blocked — set a minimal in-memory profile to unblock the UI
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             setProfile({ id: session.user.id, email: session.user.email ?? '' } as any)
           }
         } else {

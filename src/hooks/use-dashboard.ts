@@ -38,7 +38,7 @@ export function useDashboard() {
     const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
 
     const [
-      { data: accounts },
+      { data: accounts, error: acctErr },
       { data: recentTxn },
       { data: monthlyTxn },
       { data: budgets },
@@ -55,22 +55,30 @@ export function useDashboard() {
       supabase.from('categories').select('id,name,icon,color').is('deleted_at', null),
     ])
 
-    const catById: Record<string, any> = {}
-    for (const c of (cats ?? [])) catById[c.id] = c
+    if (acctErr) {
+      setError(acctErr.message)
+      setIsLoading(false)
+      return
+    }
+
+    type CatInfo = { id: string; name: string; icon: string | null; color: string | null }
+    const catById: Record<string, CatInfo> = {}
+    for (const c of (cats ?? [])) catById[c.id] = c as CatInfo
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recentWithCats = (recentTxn ?? []).map((t: any) => ({
       ...t,
       category: t.category_id ? (catById[t.category_id] ?? null) : null,
     }))
 
-    const accts: any[] = accounts ?? []
-    const totalBalance = accts.reduce((s: number, a: any) => {
+    const accts = (accounts ?? []) as Account[]
+    const totalBalance = accts.reduce((s, a) => {
       if (a.type === 'credit_card' || a.type === 'loan') return s - Math.abs(a.balance)
       return s + a.balance
     }, 0)
 
-    const txns: any[] = monthlyTxn ?? []
-    const monthlyIncome = txns.filter((t: any) => t.type === 'income' || t.type === 'refund').reduce((s: number, t: any) => s + t.amount, 0)
-    const monthlyExpenses = txns.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + t.amount, 0)
+    const txns = (monthlyTxn ?? []) as Array<{ type: string; amount: number }>
+    const monthlyIncome = txns.filter(t => t.type === 'income' || t.type === 'refund').reduce((s, t) => s + t.amount, 0)
+    const monthlyExpenses = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
     const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0
 
     // Cash flow for last 6 months
@@ -98,25 +106,28 @@ export function useDashboard() {
 }
 
 async function getCashFlowData(supabase: ReturnType<typeof createClient>, months: number) {
-  const results: Array<{ month: string; income: number; expenses: number; net: number }> = []
   const now = new Date()
+  const oldest = format(new Date(now.getFullYear(), now.getMonth() - (months - 1), 1), 'yyyy-MM-dd')
 
+  const { data } = await supabase
+    .from('transactions')
+    .select('type,amount,date')
+    .is('deleted_at', null)
+    .gte('date', oldest)
+
+  const monthMap: Record<string, { income: number; expenses: number }> = {}
+  for (const t of (data ?? []) as Array<{ type: string; amount: number; date: string }>) {
+    const key = t.date.slice(0, 7)
+    if (!monthMap[key]) monthMap[key] = { income: 0, expenses: 0 }
+    if (t.type === 'income' || t.type === 'refund') monthMap[key].income += t.amount
+    else if (t.type === 'expense') monthMap[key].expenses += t.amount
+  }
+
+  const results: Array<{ month: string; income: number; expenses: number; net: number }> = []
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const start = format(startOfMonth(d), 'yyyy-MM-dd')
-    const end = format(endOfMonth(d), 'yyyy-MM-dd')
-
-    const { data } = await supabase
-      .from('transactions')
-      .select('type,amount')
-      .is('deleted_at', null)
-      .gte('date', start)
-      .lte('date', end)
-
-    const txns: any[] = data ?? []
-    const income = txns.filter((t: any) => t.type === 'income' || t.type === 'refund').reduce((s: number, t: any) => s + t.amount, 0)
-    const expenses = txns.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + t.amount, 0)
-
+    const key = format(d, 'yyyy-MM')
+    const { income = 0, expenses = 0 } = monthMap[key] ?? {}
     results.push({ month: format(d, 'MMM'), income, expenses, net: income - expenses })
   }
   return results

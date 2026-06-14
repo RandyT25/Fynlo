@@ -147,8 +147,6 @@ export function CalendarContent() {
   const supabase = createClient()
   const defaultCurrency = useCurrency()
 
-  useEffect(() => { fetchEvents(date) }, [date])
-
   const fetchEvents = async (d: Date) => {
     setIsLoading(true)
     const year = d.getFullYear()
@@ -221,6 +219,9 @@ export function CalendarContent() {
     setEvents(allEvents)
     setIsLoading(false)
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { fetchEvents(date) }, [date])
 
   const selectedDateEvents = events.filter(e => isSameDay(parseISO(e.date), date))
   const eventDays = new Set(events.map(e => e.date))

@@ -37,6 +37,7 @@ export function WishlistContent() {
     setIsLoading(false)
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchItems() }, [fetchItems])
 
   const addItem = async () => {

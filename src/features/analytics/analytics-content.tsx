@@ -15,6 +15,32 @@ import { cn } from '@/lib/utils'
 
 type TimeRange = '1W' | '1M' | '3M' | '6M' | '1Y' | '2Y'
 
+interface AnalyticsData {
+  chartData: Array<{ month: string; balance: number; income: number; expenses: number }>
+  categories: Array<{ name: string; amount: number; color: string; transactions: Array<{ date: string; description: string; amount: number }> }>
+  totalExpenses: number
+  totalIncome: number
+  periodBalance: number
+}
+
+interface TooltipPayloadEntry { color: string; name: string; value: number }
+
+function CustomTooltip({ active, payload, label, currency }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string; currency: string }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-card/95 backdrop-blur-sm border border-border/60 rounded-2xl px-3 py-2.5 shadow-xl text-xs">
+      <p className="font-semibold text-foreground mb-1.5">{label}</p>
+      {payload.map((p, i) => (
+        <div key={i} className="flex items-center gap-1.5 mt-0.5">
+          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+          <span className="text-muted-foreground">{p.name}:</span>
+          <span className="font-semibold">{formatCurrency(p.value, currency)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const RANGES: { label: TimeRange; months?: number; days?: number }[] = [
   { label: '1W', days: 7 },
   { label: '1M', months: 1 },
@@ -26,7 +52,7 @@ const RANGES: { label: TimeRange; months?: number; days?: number }[] = [
 
 export function AnalyticsContent() {
   const [range, setRange] = useState<TimeRange>('1M')
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
@@ -41,8 +67,6 @@ export function AnalyticsContent() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const supabase = createClient()
-
-  useEffect(() => { fetchAnalytics() }, [range])
 
   const getDateRange = () => {
     const now = new Date()
@@ -75,10 +99,12 @@ export function AnalyticsContent() {
     const catById: Record<string, { name: string; color: string }> = {}
     for (const c of (cats ?? [])) catById[c.id] = { name: c.name, color: c.color }
 
+    type TxnRow = { type: string; amount: number; date: string; description: string; category_id: string | null; category: { name: string; color: string } | null }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const all = (txns ?? []).map((t: any) => ({
       ...t,
       category: t.category_id ? (catById[t.category_id] ?? null) : null,
-    })) as Array<{ type: string; amount: number; date: string; description: string; category_id: string | null; category: { name: string; color: string } | null }>
+    })) as TxnRow[]
 
     const dayMap: Record<string, { date: string; income: number; expenses: number }> = {}
     for (const t of all) {
@@ -111,23 +137,10 @@ export function AnalyticsContent() {
     setIsLoading(false)
   }
 
-  const axisStyle = { fontSize: 10, fill: isDark ? '#64748b' : '#94a3b8' }
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { fetchAnalytics() }, [range])
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null
-    return (
-      <div className="bg-card/95 backdrop-blur-sm border border-border/60 rounded-2xl px-3 py-2.5 shadow-xl text-xs">
-        <p className="font-semibold text-foreground mb-1.5">{label}</p>
-        {payload.map((p: any, i: number) => (
-          <div key={i} className="flex items-center gap-1.5 mt-0.5">
-            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-            <span className="text-muted-foreground">{p.name}:</span>
-            <span className="font-semibold">{formatCurrency(p.value, currency)}</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
+  const axisStyle = { fontSize: 10, fill: isDark ? '#64748b' : '#94a3b8' }
 
   const periodBalance = data?.periodBalance ?? 0
   const isPositive = periodBalance >= 0
@@ -228,7 +241,7 @@ export function AnalyticsContent() {
                   }}
                   width={44}
                 />
-                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#8B5CF6', strokeWidth: 1, strokeDasharray: '4 4', strokeOpacity: 0.5 }} />
+                <Tooltip content={<CustomTooltip currency={currency} />} cursor={{ stroke: '#8B5CF6', strokeWidth: 1, strokeDasharray: '4 4', strokeOpacity: 0.5 }} />
                 <Area
                   type="monotone"
                   dataKey="balance"
@@ -248,7 +261,7 @@ export function AnalyticsContent() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-base">Top Spending</h2>
-            {!isLoading && data?.totalExpenses > 0 && (
+            {!isLoading && data !== null && data.totalExpenses > 0 && (
               <span className="text-xs text-muted-foreground font-medium">
                 {formatCurrency(data.totalExpenses, currency)} total
               </span>
@@ -277,8 +290,8 @@ export function AnalyticsContent() {
             </div>
           ) : (
             <div className="space-y-2">
-              {(data?.categories ?? []).map((cat: any, i: number) => {
-                const pct = data?.totalExpenses > 0 ? (cat.amount / data.totalExpenses) * 100 : 0
+              {(data?.categories ?? []).map((cat, i) => {
+                const pct = data !== null && data.totalExpenses > 0 ? (cat.amount / data.totalExpenses) * 100 : 0
                 const isExpanded = expandedCategories.has(cat.name)
                 return (
                   <div key={i} className="bg-card rounded-2xl border border-border/40 shadow-sm overflow-hidden">
@@ -324,7 +337,7 @@ export function AnalyticsContent() {
                         <div className="px-3.5 py-1 flex justify-between text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                           <span>{cat.transactions.length} transaction{cat.transactions.length !== 1 ? 's' : ''}</span>
                         </div>
-                        {cat.transactions.map((txn: any, j: number) => (
+                        {cat.transactions.map((txn, j) => (
                           <div
                             key={j}
                             className={cn('flex items-center gap-3 px-3.5 py-2.5', j > 0 && 'border-t border-border/20')}

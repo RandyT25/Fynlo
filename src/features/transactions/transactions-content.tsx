@@ -181,6 +181,7 @@ export function TransactionsContent() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{dateLabel(group.date)}</p>
                 <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/50">
                   {group.transactions.map((txn, i) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const cat = (txn as any).category
                     const isCredit = txn.type === 'income' || txn.type === 'refund'
                     return (

@@ -19,14 +19,15 @@ export function NotificationsContent() {
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
 
-  useEffect(() => { fetchNotifications() }, [])
-
   const fetchNotifications = async () => {
     setIsLoading(true)
     const { data } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50)
     setNotifications(data ?? [])
     setIsLoading(false)
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { fetchNotifications() }, [])
 
   const markRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id)

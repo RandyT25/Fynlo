@@ -62,7 +62,7 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<AccountInput>({
     resolver: zodResolver(accountSchema),
     defaultValues: account ?? {
-      type: (presetType as any) ?? 'checking',
+      type: (presetType as AccountInput['type']) ?? 'checking',
       balance: 0,
       currency: userCurrency,
       color: '#3B82F6',
@@ -246,7 +246,7 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
                 currencySymbol={currencySymbol}
                 placeholder="0"
               />
-              <p className="text-xs text-muted-foreground">How much you've paid so far before tracking in Fynlo</p>
+              <p className="text-xs text-muted-foreground">How much you&apos;ve paid so far before tracking in Fynlo</p>
             </div>
 
             {/* Computed summary */}
@@ -292,7 +292,7 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
                   currencySymbol={currencySymbol}
                   placeholder="0"
                 />
-                <p className="text-xs text-muted-foreground">Set to see your "Paid" progress</p>
+                <p className="text-xs text-muted-foreground">Set to see your &quot;Paid&quot; progress</p>
               </div>
 
               <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-muted/40">

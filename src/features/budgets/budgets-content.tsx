@@ -53,6 +53,7 @@ export function BudgetsContent() {
       supabase.from('categories').select('*').is('deleted_at', null).order('order_index'),
       supabase.from('transactions').select('category_id,amount').eq('type', 'expense').is('deleted_at', null).gte('date', start).lte('date', end),
     ])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const budgetsData = budgetsRes.data as any[] | null
     const categoriesData = categoriesRes.data
     const txnsData = txnsRes.data as Array<{ category_id: string | null; amount: number }> | null
@@ -72,6 +73,7 @@ export function BudgetsContent() {
     setIsLoading(false)
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchData() }, [fetchData])
 
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0)
@@ -255,14 +257,17 @@ function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps
     const children = categories.filter(c => c.parent_id === parentId)
     if (parentId === selectedParentId) {
       setSelectedParentId(null)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setValue('category_id', null as any)
     } else {
       setSelectedParentId(parentId)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setValue('category_id', children.length === 0 ? parentId : null as any)
     }
   }
 
   const handleSubcategorySelect = (childId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setValue('category_id', categoryId === childId ? null as any : childId)
   }
 

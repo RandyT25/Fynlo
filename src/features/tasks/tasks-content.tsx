@@ -40,6 +40,7 @@ export function TasksContent() {
     setIsLoading(false)
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
   const addTask = async () => {

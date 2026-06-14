@@ -31,8 +31,6 @@ export function FamilyContent() {
   const [editFamilyName, setEditFamilyName] = useState('')
   const supabase = createClient()
 
-  useEffect(() => { fetchFamily() }, [])
-
   const fetchFamily = async () => {
     setIsLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -41,12 +39,17 @@ export function FamilyContent() {
     const { data: memberData } = await supabase.from('family_members').select('*, family:families(*)').eq('user_id', user.id).eq('status', 'active').maybeSingle()
 
     if (memberData?.family) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setFamily((memberData as any).family)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: allMembers } = await supabase.from('family_members').select('*, profile:profiles(id,full_name,email,avatar_url)').eq('family_id', (memberData as any).family.id)
       setMembers(allMembers ?? [])
     }
     setIsLoading(false)
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { fetchFamily() }, [])
 
   const createFamily = async () => {
     if (!familyName.trim()) return
@@ -197,6 +200,7 @@ export function FamilyContent() {
         </CardHeader>
         <CardContent className="space-y-3">
           {members.map(member => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const profile = (member as any).profile
             const RoleIcon = ROLE_ICONS[member.role] ?? Users
             return (

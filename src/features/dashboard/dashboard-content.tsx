@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { TrendingUp, TrendingDown, Plus, ChevronRight, Bell } from 'lucide-react'
 import { format, parseISO, isToday, isYesterday } from 'date-fns'
 import { motion } from 'framer-motion'
@@ -56,7 +57,7 @@ export function DashboardContent() {
         <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full bg-white/5 translate-y-14 -translate-x-8 pointer-events-none" />
         {/* Top row: avatar + greeting + bell */}
         <div className="relative flex items-center justify-between mb-5">
-          <a href="/settings" className="flex items-center gap-2.5">
+          <Link href="/settings" className="flex items-center gap-2.5">
             <Avatar className="w-9 h-9 ring-2 ring-white/30">
               <AvatarImage src={profile?.avatar_url ?? undefined} />
               <AvatarFallback className="bg-white/20 text-white text-sm font-bold">{initials}</AvatarFallback>
@@ -65,12 +66,12 @@ export function DashboardContent() {
               <p className="text-white/60 text-[11px] leading-none mb-0.5">Welcome back</p>
               <p className="text-white font-semibold text-sm leading-none truncate max-w-[120px]">{profile?.full_name?.split(' ')[0] ?? 'there'}</p>
             </div>
-          </a>
-          <a href="/notifications">
+          </Link>
+          <Link href="/notifications">
             <div className="w-9 h-9 bg-white/15 rounded-full flex items-center justify-center active:bg-white/25 transition-colors">
               <Bell className="w-4 h-4 text-white" />
             </div>
-          </a>
+          </Link>
         </div>
         <div className="relative">
           <span className="text-white/60 text-xs font-medium">{format(new Date(), 'MMMM yyyy')} Total Balance</span>
@@ -110,9 +111,9 @@ export function DashboardContent() {
       <div className="flex-1 px-4 pt-5 pb-24">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-base">Recent Transactions</h2>
-          <a href="/transactions" className="flex items-center gap-0.5 text-primary text-sm font-medium">
+          <Link href="/transactions" className="flex items-center gap-0.5 text-primary text-sm font-medium">
             See all <ChevronRight className="w-3.5 h-3.5" />
-          </a>
+          </Link>
         </div>
 
         {isLoading ? (
@@ -137,6 +138,7 @@ export function DashboardContent() {
                 <p className="text-xs font-medium text-muted-foreground mb-2">{dateLabel(group.date)}</p>
                 <div className="space-y-1">
                   {group.transactions.map((txn, i) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const cat = (txn as any).category
                     const isCredit = txn.type === 'income' || txn.type === 'refund'
                     return (

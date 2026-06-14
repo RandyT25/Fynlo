@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -35,6 +36,7 @@ export function RecurringContent() {
   const [recurrings, setRecurrings] = useState<RecurringTransaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<RecurringTransaction | null>(null)
   const supabase = createClient()
 
   const fetchRecurrings = useCallback(async () => {
@@ -44,6 +46,7 @@ export function RecurringContent() {
     setIsLoading(false)
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchRecurrings() }, [fetchRecurrings])
 
   const togglePause = async (r: RecurringTransaction) => {
@@ -53,7 +56,6 @@ export function RecurringContent() {
   }
 
   const deleteRecurring = async (id: string) => {
-    if (!confirm('Delete this recurring transaction?')) return
     await supabase.from('recurring_transactions').update({ deleted_at: new Date().toISOString() }).eq('id', id)
     toast.success('Deleted')
     fetchRecurrings()
@@ -106,7 +108,7 @@ export function RecurringContent() {
                     <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => togglePause(r)}>
                       {r.is_paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                     </Button>
-                    <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-destructive" onClick={() => deleteRecurring(r.id)}>
+                    <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-destructive" onClick={() => setDeleteTarget(r)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -116,6 +118,26 @@ export function RecurringContent() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete recurring transaction?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{deleteTarget?.description}&rdquo; will be permanently deleted. Future entries will stop being created.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (deleteTarget) { deleteRecurring(deleteTarget.id); setDeleteTarget(null) } }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -190,7 +212,10 @@ function RecurringForm({ onSuccess, onCancel }: RecurringFormProps) {
       </div>
       <div className="space-y-2">
         <Label>Account</Label>
-        <Select onValueChange={(v: string | null) => setValue('account_id', v as any)}>
+        <Select onValueChange={(v) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setValue('account_id', v as any)
+        }}>
           <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
           <SelectContent>{accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
         </Select>

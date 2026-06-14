@@ -49,8 +49,10 @@ export function useTransactions(filters: TransactionFilters = {}) {
     if (err) {
       setError(err.message)
     } else {
-      const catById: Record<string, any> = {}
-      for (const c of (cats ?? [])) catById[c.id] = c
+      type CatRow = { id: string; name: string; icon: string | null; color: string | null; parent_id: string | null }
+      const catById: Record<string, CatRow> = {}
+      for (const c of (cats ?? [])) catById[c.id] = c as CatRow
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const merged = (data ?? []).map((t: any) => ({
         ...t,
         category: t.category_id ? (catById[t.category_id] ?? null) : null,
@@ -59,9 +61,10 @@ export function useTransactions(filters: TransactionFilters = {}) {
       setCount(total ?? 0)
     }
     setIsLoading(false)
-  }, [JSON.stringify(filters)])
+  }, [filters.accountId, filters.categoryId, filters.type, filters.dateFrom, filters.dateTo, filters.search, filters.limit])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTransactions()
   }, [fetchTransactions])
 
