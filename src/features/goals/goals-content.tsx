@@ -13,6 +13,7 @@ import { goalSchema, type GoalInput } from '@/lib/validations/goal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -109,12 +110,7 @@ export function GoalsContent() {
       {completed.length > 0 && (
         <div className="flex items-center justify-between mb-4 px-1">
           <span className="text-sm text-muted-foreground">Show fulfilled goals</span>
-          <button
-            className={cn('w-11 h-6 rounded-full transition-colors relative', showCompleted ? 'bg-primary' : 'bg-muted')}
-            onClick={() => setShowCompleted(v => !v)}
-          >
-            <div className={cn('w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm', showCompleted ? 'translate-x-5' : 'translate-x-0.5')} />
-          </button>
+          <Switch checked={showCompleted} onCheckedChange={setShowCompleted} />
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 import type { Account, Transaction, Budget, Goal, BillReminder } from '@/types/database'
+import { calculateNetBalance } from '@/lib/utils/index'
 
 interface DashboardData {
   accounts: Account[]
@@ -75,10 +76,7 @@ export function useDashboard() {
     }))
 
     const accts = (accounts ?? []) as Account[]
-    const totalBalance = accts.reduce((s, a) => {
-      if (a.type === 'credit_card' || a.type === 'loan') return s - Math.abs(a.balance)
-      return s + a.balance
-    }, 0)
+    const totalBalance = calculateNetBalance(accts)
 
     const txns = (monthlyTxn ?? []) as Array<{ type: string; amount: number }>
     const monthlyIncome = txns.filter(t => t.type === 'income' || t.type === 'refund').reduce((s, t) => s + t.amount, 0)

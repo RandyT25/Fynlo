@@ -1,5 +1,13 @@
 export * from './format'
 export * from './colors'
+import type { Account } from '@/types/database'
+
+export function calculateNetBalance(accounts: Account[]): number {
+  return accounts.reduce((sum, a) => {
+    if (a.type === 'credit_card' || a.type === 'loan') return sum - Math.abs(a.balance)
+    return sum + a.balance
+  }, 0)
+}
 
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))

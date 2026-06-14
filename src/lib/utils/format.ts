@@ -74,3 +74,14 @@ export function formatTransactionSign(amount: number, type: string, currency = '
   if (type === 'expense') return `-${formatCurrency(amount, currency)}`
   return formatCurrency(amount, currency)
 }
+
+export function groupByDate<T extends { date: string }>(items: T[]): Array<{ date: string; transactions: T[] }> {
+  const map: Record<string, T[]> = {}
+  for (const t of items) {
+    if (!map[t.date]) map[t.date] = []
+    map[t.date].push(t)
+  }
+  return Object.entries(map)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, txns]) => ({ date, transactions: txns }))
+}

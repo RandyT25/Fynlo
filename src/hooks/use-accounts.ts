@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import type { Account } from '@/types/database'
+import { calculateNetBalance } from '@/lib/utils/index'
 import { toast } from 'sonner'
 
 export function useAccounts() {
@@ -33,12 +34,7 @@ export function useAccounts() {
     fetchAccounts()
   }, [fetchAccounts])
 
-  const totalBalance = accounts
-    .filter(a => a.is_active)
-    .reduce((sum, a) => {
-      if (a.type === 'credit_card' || a.type === 'loan') return sum - Math.abs(a.balance)
-      return sum + a.balance
-    }, 0)
+  const totalBalance = calculateNetBalance(accounts.filter(a => a.is_active))
 
   const deleteAccount = async (id: string) => {
     const supabase = createClient()

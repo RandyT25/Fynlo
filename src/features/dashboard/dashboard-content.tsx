@@ -12,21 +12,10 @@ import { useDashboard } from '@/hooks/use-dashboard'
 import { useAuth } from '@/hooks/use-auth'
 import { useCurrency } from '@/hooks/use-currency'
 import { TransactionForm } from '@/features/transactions/transaction-form'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, groupByDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 import { DynamicIcon } from '@/components/shared/dynamic-icon'
 import type { TransactionWithRelations } from '@/types/database'
-
-function groupByDate(transactions: TransactionWithRelations[]) {
-  const map: Record<string, TransactionWithRelations[]> = {}
-  for (const t of transactions) {
-    if (!map[t.date]) map[t.date] = []
-    map[t.date].push(t)
-  }
-  return Object.entries(map)
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, txns]) => ({ date, transactions: txns }))
-}
 
 function dateLabel(date: string) {
   const d = parseISO(date)

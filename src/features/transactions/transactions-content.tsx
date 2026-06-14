@@ -13,22 +13,11 @@ import { useCurrency } from '@/hooks/use-currency'
 import { TransactionForm } from './transaction-form'
 import { EmptyState } from '@/components/shared/empty-state'
 import { DynamicIcon } from '@/components/shared/dynamic-icon'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, groupByDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 import type { TransactionWithRelations } from '@/types/database'
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => subMonths(new Date(), 11 - i))
-
-function groupByDate(transactions: TransactionWithRelations[]) {
-  const map: Record<string, TransactionWithRelations[]> = {}
-  for (const t of transactions) {
-    if (!map[t.date]) map[t.date] = []
-    map[t.date].push(t)
-  }
-  return Object.entries(map)
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, txns]) => ({ date, transactions: txns }))
-}
 
 function dateLabel(date: string) {
   const d = parseISO(date)
