@@ -39,12 +39,12 @@ export function useDashboard() {
 
     const [
       { data: accounts, error: acctErr },
-      { data: recentTxn },
-      { data: monthlyTxn },
-      { data: budgets },
-      { data: goals },
-      { data: bills },
-      { data: cats },
+      { data: recentTxn, error: recentErr },
+      { data: monthlyTxn, error: monthlyErr },
+      { data: budgets, error: budgetsErr },
+      { data: goals, error: goalsErr },
+      { data: bills, error: billsErr },
+      { data: cats, error: catsErr },
     ] = await Promise.all([
       supabase.from('accounts').select('*').is('deleted_at', null).eq('is_active', true),
       supabase.from('transactions').select('*, account:accounts!account_id(id,name,color,icon,type)').is('deleted_at', null).order('date', { ascending: false }).limit(10),
@@ -55,11 +55,15 @@ export function useDashboard() {
       supabase.from('categories').select('id,name,icon,color').is('deleted_at', null),
     ])
 
+    // Accounts is the critical query — without it we can't compute balance
     if (acctErr) {
       setError(acctErr.message)
       setIsLoading(false)
       return
     }
+    // Non-critical query errors: surface as a warning but continue with partial data
+    const sideErr = recentErr ?? monthlyErr ?? budgetsErr ?? goalsErr ?? billsErr ?? catsErr
+    if (sideErr) setError(sideErr.message)
 
     type CatInfo = { id: string; name: string; icon: string | null; color: string | null }
     const catById: Record<string, CatInfo> = {}
