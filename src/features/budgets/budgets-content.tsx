@@ -7,6 +7,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
 import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
+import { useCategories } from '@/hooks/use-categories'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { budgetSchema, type BudgetInput } from '@/lib/validations/budget'
 import { useForm } from 'react-hook-form'
@@ -33,8 +34,8 @@ interface BudgetWithMeta extends Budget {
 
 export function BudgetsContent() {
   const [budgets, setBudgets] = useState<BudgetWithMeta[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { categories } = useCategories()
   const [showForm, setShowForm] = useState(false)
   const [editBudget, setEditBudget] = useState<Budget | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -48,14 +49,12 @@ export function BudgetsContent() {
     const start = format(startOfMonth(now), 'yyyy-MM-dd')
     const end = format(endOfMonth(now), 'yyyy-MM-dd')
 
-    const [budgetsRes, categoriesRes, txnsRes] = await Promise.all([
+    const [budgetsRes, txnsRes] = await Promise.all([
       supabase.from('budgets').select('*, category:categories(*)').is('deleted_at', null).eq('is_active', true),
-      supabase.from('categories').select('*').is('deleted_at', null).order('order_index'),
       supabase.from('transactions').select('category_id,amount').eq('type', 'expense').is('deleted_at', null).gte('date', start).lte('date', end),
     ])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const budgetsData = budgetsRes.data as any[] | null
-    const categoriesData = categoriesRes.data
     const txnsData = txnsRes.data as Array<{ category_id: string | null; amount: number }> | null
 
     const spentByCategory: Record<string, number> = {}
@@ -69,7 +68,6 @@ export function BudgetsContent() {
     })
 
     setBudgets(budgetsWithMeta)
-    setCategories(categoriesData ?? [])
     setIsLoading(false)
   }, [])
 

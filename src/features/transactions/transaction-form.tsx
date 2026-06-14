@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { AmountInput } from '@/components/ui/amount-input'
 import { useAccounts } from '@/hooks/use-accounts'
+import { useCategories } from '@/hooks/use-categories'
 import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { cn } from '@/lib/utils'
@@ -26,15 +27,6 @@ const TRANSACTION_TYPES = [
   { value: 'refund', label: 'Refund', color: 'text-purple-500' },
 ]
 
-interface Category {
-  id: string
-  name: string
-  color: string
-  icon: string
-  type: string
-  parent_id: string | null
-}
-
 interface TransactionFormProps {
   transaction?: Transaction
   initialValues?: Partial<TransactionInput>
@@ -44,23 +36,12 @@ interface TransactionFormProps {
 
 export function TransactionForm({ transaction, initialValues, onSuccess, onCancel }: TransactionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [categories, setCategories] = useState<Category[]>([])
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
   const { accounts } = useAccounts()
+  const { categories } = useCategories()
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
   const supabase = createClient()
-
-  useEffect(() => {
-    supabase
-      .from('categories')
-      .select('id,name,color,icon,type,parent_id')
-      .is('deleted_at', null)
-      .order('order_index')
-      .then(({ data }: { data: Category[] | null }) => {
-        setCategories(data ?? [])
-      })
-  }, [])
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransactionInput>({
     resolver: zodResolver(transactionSchema),
