@@ -42,7 +42,7 @@ function AccountRow({ account, onClick, index }: { account: Account; onClick: ()
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border/50 shadow-sm active:bg-muted/50 cursor-pointer"
+      className="flex items-center gap-3 p-3.5 rounded-2xl bg-card card-elevated active:bg-muted/40 cursor-pointer transition-colors"
       onClick={onClick}
     >
       <div

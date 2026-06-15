@@ -129,13 +129,13 @@ export function TransactionsContent() {
 
       {/* Income / Outcome summary */}
       <div className="px-4 py-3 flex gap-3">
-        <div className="flex-1 bg-green-50 dark:bg-green-500/10 rounded-2xl px-4 py-3">
-          <p className="text-[11px] text-muted-foreground mb-0.5">Income</p>
-          <p className="text-green-600 dark:text-green-400 font-bold">+{formatCurrency(monthIncome, currency)}</p>
+        <div className="flex-1 bg-card card-elevated rounded-2xl px-4 py-3 border-l-2 border-emerald-500">
+          <p className="text-[10.5px] text-muted-foreground/70 font-medium mb-0.5 tracking-wide uppercase">Income</p>
+          <p className="text-emerald-600 dark:text-emerald-400 font-bold text-[15px] tracking-tight">+{formatCurrency(monthIncome, currency)}</p>
         </div>
-        <div className="flex-1 bg-red-50 dark:bg-red-500/10 rounded-2xl px-4 py-3">
-          <p className="text-[11px] text-muted-foreground mb-0.5">Outcome</p>
-          <p className="text-destructive font-bold">-{formatCurrency(monthExpense, currency)}</p>
+        <div className="flex-1 bg-card card-elevated rounded-2xl px-4 py-3 border-l-2 border-destructive">
+          <p className="text-[10.5px] text-muted-foreground/70 font-medium mb-0.5 tracking-wide uppercase">Expenses</p>
+          <p className="text-destructive font-bold text-[15px] tracking-tight">−{formatCurrency(monthExpense, currency)}</p>
         </div>
       </div>
 
@@ -167,8 +167,8 @@ export function TransactionsContent() {
           <div className="space-y-5">
             {grouped.map(group => (
               <div key={group.date}>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{dateLabel(group.date)}</p>
-                <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/50">
+                <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide mb-2.5">{dateLabel(group.date)}</p>
+                <div className="bg-card card-elevated rounded-2xl overflow-hidden">
                   {group.transactions.map((txn, i) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const cat = (txn as any).category
@@ -180,27 +180,27 @@ export function TransactionsContent() {
                         animate={{ opacity: 1 }}
                         transition={{ delay: Math.min(i * 0.02, 0.2) }}
                         className={cn(
-                          'flex items-center gap-3 px-4 py-3 active:bg-muted/50 cursor-pointer',
-                          i > 0 && 'border-t border-border/40'
+                          'flex items-center gap-3 px-4 py-3 active:bg-muted/40 cursor-pointer transition-colors',
+                          i > 0 && 'border-t border-border/30'
                         )}
                         onClick={() => setEditTxn(txn)}
                       >
                         <div
                           className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: cat?.color ? `${cat.color}22` : '#6B728022' }}
+                          style={{ backgroundColor: cat?.color ? `${cat.color}18` : '#6B728018' }}
                         >
                           <DynamicIcon
                             name={cat?.icon ?? 'credit-card'}
-                            className="w-5 h-5"
+                            className="w-[1.1rem] h-[1.1rem]"
                             style={{ color: cat?.color ?? '#6B7280' }}
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{txn.description}</p>
-                          <p className="text-xs text-muted-foreground">{cat?.name ?? 'Uncategorized'}</p>
+                          <p className="font-semibold text-[13.5px] tracking-tight truncate">{txn.description}</p>
+                          <p className="text-[11.5px] text-muted-foreground/70">{cat?.name ?? 'Uncategorized'}</p>
                         </div>
-                        <p className={cn('font-bold text-sm shrink-0', isCredit ? 'text-green-500' : 'text-foreground')}>
-                          {isCredit ? '+' : '-'}{formatCurrency(txn.amount, txn.currency)}
+                        <p className={cn('font-bold text-sm shrink-0 tracking-tight', isCredit ? 'text-emerald-500 dark:text-emerald-400' : 'text-foreground')}>
+                          {isCredit ? '+' : '−'}{formatCurrency(txn.amount, txn.currency)}
                         </p>
                       </motion.div>
                     )
@@ -214,11 +214,15 @@ export function TransactionsContent() {
 
       {/* FAB */}
       <button
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center z-40 active:scale-95 transition-transform"
-        style={{ maxWidth: 'none', bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
+        style={{
+          bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))',
+          right: '1rem',
+          boxShadow: '0 4px 24px rgba(37,99,235,0.45), 0 2px 8px rgba(0,0,0,0.2)',
+        }}
         onClick={() => setShowAdd(true)}
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-6 h-6" strokeWidth={2.5} />
       </button>
 
       {/* Add sheet */}

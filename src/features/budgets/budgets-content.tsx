@@ -89,11 +89,11 @@ export function BudgetsContent() {
           <p className="text-2xl font-bold">{formatCurrency(totalBudgeted, currency)}</p>
         </div>
         <div className="flex flex-col gap-2">
-          <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
+          <div className="bg-card card-elevated rounded-2xl px-4 py-2.5">
             <p className="text-[11px] text-muted-foreground">Spent</p>
             <p className="font-bold text-sm text-destructive">{formatCurrency(totalSpent, currency)}</p>
           </div>
-          <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/50">
+          <div className="bg-card card-elevated rounded-2xl px-4 py-2.5">
             <p className="text-[11px] text-muted-foreground">Left</p>
             <p className={cn('font-bold text-sm', totalBudgeted - totalSpent >= 0 ? 'text-green-500' : 'text-destructive')}>
               {formatCurrency(Math.abs(totalBudgeted - totalSpent), currency)}
@@ -121,7 +121,7 @@ export function BudgetsContent() {
 
             return (
               <motion.div key={budget.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <div className="bg-card rounded-3xl p-4 shadow-sm border border-border/50">
+                <div className="bg-card card-elevated rounded-3xl p-4">
                   {/* Tappable budget info — opens edit */}
                   <div
                     className="active:opacity-70 transition-opacity cursor-pointer"
@@ -171,7 +171,7 @@ export function BudgetsContent() {
       {/* FAB */}
       <button
         className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
-        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
+        style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
         onClick={() => { setEditBudget(null); setShowForm(true) }}
       >
         <Plus className="w-6 h-6" />

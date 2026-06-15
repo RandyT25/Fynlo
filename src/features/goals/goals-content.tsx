@@ -95,11 +95,11 @@ export function GoalsContent() {
       {/* Summary row */}
       {goals.length > 0 && (
         <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-card rounded-2xl p-4 shadow-sm border border-border/50">
+          <div className="flex-1 bg-card card-elevated rounded-2xl p-4">
             <p className="text-xs text-muted-foreground mb-1">Total Saved</p>
             <p className="text-xl font-bold">{formatCurrency(totalSaved, currency)}</p>
           </div>
-          <div className="flex-1 bg-card rounded-2xl p-4 shadow-sm border border-border/50">
+          <div className="flex-1 bg-card card-elevated rounded-2xl p-4">
             <p className="text-xs text-muted-foreground mb-1">Fulfilled</p>
             <p className="text-xl font-bold">{completed.length}<span className="text-muted-foreground font-normal text-sm">/{goals.length}</span></p>
           </div>
@@ -126,7 +126,7 @@ export function GoalsContent() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
-                className={cn('bg-card rounded-3xl p-4 shadow-sm border border-border/50', goal.is_completed && 'opacity-70')}
+                className={cn('bg-card card-elevated rounded-3xl p-4', goal.is_completed && 'opacity-70')}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -172,7 +172,7 @@ export function GoalsContent() {
       {/* FAB */}
       <button
         className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
-        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
+        style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
         onClick={() => { setEditGoal(null); setShowForm(true) }}
       >
         <Plus className="w-6 h-6" />

@@ -293,7 +293,7 @@ export function SubscriptionsContent() {
       {/* FAB */}
       <button
         className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
-        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
+        style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
         onClick={() => { setEditSub(null); setShowForm(true) }}
       >
         <Plus className="w-6 h-6" />

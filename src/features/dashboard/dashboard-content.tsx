@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, Plus, ChevronRight, Bell } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, ChevronRight, Bell, ArrowUpRight, ArrowDownRight, ArrowLeftRight } from 'lucide-react'
 import { format, parseISO, isToday, isYesterday } from 'date-fns'
 import { motion } from 'framer-motion'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -39,93 +39,124 @@ export function DashboardContent() {
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Hero balance */}
-      <div className="relative px-5 pt-5 pb-7 gradient-primary text-white rounded-b-[2rem] overflow-hidden">
-        {/* Subtle decorative orbs */}
-        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/5 -translate-y-20 translate-x-16 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full bg-white/5 translate-y-14 -translate-x-8 pointer-events-none" />
-        {/* Top row: avatar + greeting + bell */}
-        <div className="relative flex items-center justify-between mb-5">
-          <Link href="/settings" className="flex items-center gap-2.5">
-            <Avatar className="w-9 h-9 ring-2 ring-white/30">
-              <AvatarImage src={profile?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-white/20 text-white text-sm font-bold">{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-white/60 text-[11px] leading-none mb-0.5">Welcome back</p>
-              <p className="text-white font-semibold text-sm leading-none truncate max-w-[120px]">{profile?.full_name?.split(' ')[0] ?? 'there'}</p>
-            </div>
-          </Link>
-          <Link href="/notifications">
-            <div className="w-9 h-9 bg-white/15 rounded-full flex items-center justify-center active:bg-white/25 transition-colors">
-              <Bell className="w-4 h-4 text-white" />
-            </div>
-          </Link>
-        </div>
-        <div className="relative">
-          <span className="text-white/60 text-xs font-medium">{format(new Date(), 'MMMM yyyy')} Total Balance</span>
-          <p className="text-4xl font-bold tracking-tight mt-1 mb-1">
-            {isLoading ? <span className="opacity-50">—</span> : formatCurrency(data?.totalBalance ?? 0, currency)}
-          </p>
-          <span className={cn('inline-flex text-xs font-semibold px-2.5 py-1 rounded-full', netMonth >= 0 ? 'bg-green-500/25 text-green-200' : 'bg-red-400/25 text-red-200')}>
-            {netMonth >= 0 ? '▲' : '▼'} {netMonth >= 0 ? '+' : ''}{formatCurrency(netMonth, currency)} this month
-          </span>
+
+      {/* ── Deep gradient hero ── */}
+      <div className="relative gradient-hero text-white overflow-hidden" style={{ borderRadius: '0 0 2.5rem 2.5rem' }}>
+        {/* Layered radial glows for depth */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #818CF8 0%, transparent 70%)', transform: 'translate(30%, -40%)' }} />
+          <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-15" style={{ background: 'radial-gradient(circle, #3B82F6 0%, transparent 70%)', transform: 'translate(-30%, 40%)' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.18) 100%)' }} />
         </div>
 
-        <div className="relative flex gap-3 mt-5">
-          <div className="flex-1 bg-white/12 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10">
-            <div className="flex items-center gap-1.5 mb-1">
-              <TrendingUp className="w-3 h-3 text-green-300" />
-              <span className="text-white/60 text-[11px]">Income</span>
-            </div>
-            {isLoading
-              ? <Skeleton className="h-5 w-20 bg-white/20" />
-              : <p className="text-white font-bold text-sm">{formatCurrency(data?.monthlyIncome ?? 0, currency)}</p>
-            }
+        <div className="relative px-5 pt-5 pb-7">
+          {/* Top row: avatar + greeting + bell */}
+          <div className="flex items-center justify-between mb-6">
+            <Link href="/settings" className="flex items-center gap-3 cursor-pointer">
+              <Avatar className="w-9 h-9 ring-2 ring-white/25 shadow-lg">
+                <AvatarImage src={profile?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-white/20 text-white text-sm font-bold backdrop-blur-sm">{initials}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-white/55 text-[10px] font-medium tracking-widest uppercase leading-none mb-0.5">Welcome back</p>
+                <p className="text-white font-semibold text-sm leading-none tracking-tight truncate max-w-[120px]">
+                  {profile?.full_name?.split(' ')[0] ?? 'there'}
+                </p>
+              </div>
+            </Link>
+            <Link href="/notifications" className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-colors active:bg-white/20" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              <Bell className="w-4 h-4 text-white" />
+            </Link>
           </div>
-          <div className="flex-1 bg-white/12 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10">
-            <div className="flex items-center gap-1.5 mb-1">
-              <TrendingDown className="w-3 h-3 text-red-300" />
-              <span className="text-white/60 text-[11px]">Expenses</span>
-            </div>
+
+          {/* Balance */}
+          <div className="mb-1">
+            <p className="text-white/50 text-[11px] font-medium tracking-widest uppercase mb-2">
+              {format(new Date(), 'MMMM yyyy')} · Total Balance
+            </p>
             {isLoading
-              ? <Skeleton className="h-5 w-20 bg-white/20" />
-              : <p className="text-white font-bold text-sm">{formatCurrency(data?.monthlyExpenses ?? 0, currency)}</p>
+              ? <Skeleton className="h-12 w-48 bg-white/15 rounded-xl mb-2" />
+              : <p className="text-[2.75rem] font-bold tracking-tight leading-none text-white mb-2">
+                  {formatCurrency(data?.totalBalance ?? 0, currency)}
+                </p>
             }
+            <div className={cn(
+              'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full',
+              netMonth >= 0
+                ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/20'
+                : 'bg-red-400/20 text-red-200 border border-red-400/20'
+            )}>
+              {netMonth >= 0
+                ? <TrendingUp className="w-3 h-3" />
+                : <TrendingDown className="w-3 h-3" />
+              }
+              {netMonth >= 0 ? '+' : ''}{formatCurrency(netMonth, currency)} this month
+            </div>
+          </div>
+
+          {/* Income / Expenses */}
+          <div className="flex gap-3 mt-5">
+            <div className="flex-1 rounded-2xl px-4 py-3 glass-hero-card">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-400/25 flex items-center justify-center">
+                  <ArrowDownRight className="w-3 h-3 text-emerald-300" />
+                </div>
+                <span className="text-white/55 text-[10.5px] font-medium tracking-wide">Income</span>
+              </div>
+              {isLoading
+                ? <Skeleton className="h-5 w-20 bg-white/15 rounded" />
+                : <p className="text-white font-bold text-sm tracking-tight">{formatCurrency(data?.monthlyIncome ?? 0, currency)}</p>
+              }
+            </div>
+            <div className="flex-1 rounded-2xl px-4 py-3 glass-hero-card">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-5 h-5 rounded-full bg-rose-400/25 flex items-center justify-center">
+                  <ArrowUpRight className="w-3 h-3 text-rose-300" />
+                </div>
+                <span className="text-white/55 text-[10.5px] font-medium tracking-wide">Expenses</span>
+              </div>
+              {isLoading
+                ? <Skeleton className="h-5 w-20 bg-white/15 rounded" />
+                : <p className="text-white font-bold text-sm tracking-tight">{formatCurrency(data?.monthlyExpenses ?? 0, currency)}</p>
+              }
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Recent transactions — pb-24 keeps the last row clear of the FAB */}
-      <div className="flex-1 px-4 pt-5 pb-24">
+      {/* ── Recent transactions ── */}
+      <div className="flex-1 px-4 pt-6 pb-24">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-base">Recent Transactions</h2>
-          <Link href="/transactions" className="flex items-center gap-0.5 text-primary text-sm font-medium">
+          <h2 className="font-bold text-[15px] tracking-tight">Recent Transactions</h2>
+          <Link href="/transactions" className="flex items-center gap-0.5 text-primary text-[13px] font-semibold cursor-pointer">
             See all <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div key={i} className="flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-card card-elevated">
                 <Skeleton className="w-10 h-10 rounded-2xl shrink-0" />
-                <div className="flex-1"><Skeleton className="h-4 w-36 mb-1.5" /><Skeleton className="h-3 w-20" /></div>
+                <div className="flex-1"><Skeleton className="h-3.5 w-36 mb-2" /><Skeleton className="h-3 w-20" /></div>
                 <Skeleton className="h-4 w-16" />
               </div>
             ))}
           </div>
         ) : grouped.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-sm">No transactions yet</p>
-            <p className="text-xs mt-1">Tap + to add your first one</p>
+          <div className="text-center py-14 text-muted-foreground">
+            <div className="w-16 h-16 rounded-3xl bg-muted/60 flex items-center justify-center mx-auto mb-4">
+              <ArrowLeftRight className="w-7 h-7 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm font-medium">No transactions yet</p>
+            <p className="text-xs mt-1 text-muted-foreground/60">Tap + to add your first one</p>
           </div>
         ) : (
           <div className="space-y-5">
             {grouped.map(group => (
               <div key={group.date}>
-                <p className="text-xs font-medium text-muted-foreground mb-2">{dateLabel(group.date)}</p>
-                <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-muted-foreground/70 tracking-wide uppercase mb-2.5">{dateLabel(group.date)}</p>
+                <div className="space-y-1.5">
                   {group.transactions.map((txn, i) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const cat = (txn as any).category
@@ -133,27 +164,27 @@ export function DashboardContent() {
                     return (
                       <motion.div
                         key={txn.id}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.03 }}
-                        className="flex items-center gap-3 py-2"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03, duration: 0.2 }}
+                        className="flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-card card-elevated"
                       >
                         <div
                           className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: cat?.color ? `${cat.color}20` : '#6B728020' }}
+                          style={{ backgroundColor: cat?.color ? `${cat.color}18` : '#6B728018' }}
                         >
                           <DynamicIcon
                             name={cat?.icon ?? 'credit-card'}
-                            className="w-5 h-5"
+                            className="w-[1.1rem] h-[1.1rem]"
                             style={{ color: cat?.color ?? '#6B7280' }}
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{txn.description}</p>
-                          <p className="text-xs text-muted-foreground truncate">{cat?.name ?? 'Uncategorized'}</p>
+                          <p className="font-semibold text-[13.5px] tracking-tight truncate">{txn.description}</p>
+                          <p className="text-[11.5px] text-muted-foreground/70 truncate">{cat?.name ?? 'Uncategorized'}</p>
                         </div>
-                        <p className={cn('font-semibold text-sm shrink-0', isCredit ? 'text-green-500' : 'text-foreground')}>
-                          {isCredit ? '+' : '-'}{formatCurrency(txn.amount, txn.currency)}
+                        <p className={cn('font-bold text-sm shrink-0 tracking-tight', isCredit ? 'text-emerald-500 dark:text-emerald-400' : 'text-foreground')}>
+                          {isCredit ? '+' : '−'}{formatCurrency(txn.amount, txn.currency)}
                         </p>
                       </motion.div>
                     )
@@ -165,13 +196,17 @@ export function DashboardContent() {
         )}
       </div>
 
-      {/* FAB */}
+      {/* ── FAB ── */}
       <button
-        className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform"
-        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '1rem' }}
+        className="fixed z-40 w-14 h-14 rounded-full gradient-primary text-white flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
+        style={{
+          bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))',
+          right: '1rem',
+          boxShadow: '0 4px 24px rgba(37,99,235,0.45), 0 2px 8px rgba(0,0,0,0.2)',
+        }}
         onClick={() => setShowAdd(true)}
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-6 h-6" strokeWidth={2.5} />
       </button>
 
       <Sheet open={showAdd} onOpenChange={setShowAdd}>
