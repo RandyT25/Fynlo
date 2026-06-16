@@ -63,11 +63,9 @@ export function useDashboard() {
       // call getSession() via fetchWithAuth). Racing against 8s surfaces
       // the hang as an error instead of an infinite skeleton.
       console.log('[dashboard] checking session')
-      const { data: { session } } = await withTimeout(
-        supabase.auth.getSession(),
-        8_000,
-        'getSession'
-      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sessionResp = await withTimeout(supabase.auth.getSession(), 8_000, 'getSession') as any
+      const session = sessionResp?.data?.session ?? null
       console.log('[dashboard] session valid:', !!session, session?.expires_at
         ? `expires ${new Date(session.expires_at * 1000).toLocaleTimeString()}`
         : 'no expiry')
