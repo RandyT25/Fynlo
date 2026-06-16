@@ -1,36 +1,61 @@
-const CACHE_NAME = 'fynlo-v1'
-const STATIC_ASSETS = ['/', '/dashboard', '/transactions', '/accounts', '/budgets', '/goals']
+const CACHE_NAME = 'fynlo-v2'
+
+// Static assets are safe to cache — they use content-hashed URLs so the
+// same URL always returns the same bytes. HTML pages are NOT cached because
+// they must be fetched fresh each time so that:
+//  1. Set-Cookie headers from the auth middleware reach the browser
+//  2. The HTML always references the latest JS bundle hashes after a deploy
+const STATIC_ASSET_PREFIXES = [
+  '/_next/static/',
+  '/icons/',
+]
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting())
-  )
+  // No pre-caching of HTML — just take over immediately
+  event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   )
 })
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return
-  if (event.request.url.includes('/api/') || event.request.url.includes('supabase')) return
 
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      const fetchPromise = fetch(event.request).then(response => {
-        if (response.ok) {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone))
-        }
-        return response
+  const url = new URL(event.request.url)
+
+  // Skip: API calls and Supabase (auth, database, realtime)
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase')) return
+
+  // Navigation requests (HTML pages): always go to the network.
+  // This ensures middleware Set-Cookie headers reach the browser and the
+  // browser always gets the latest JS bundle hash references.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request))
+    return
+  }
+
+  // Content-hashed static assets: cache-first (URL changes on every deploy,
+  // so the cached version is always correct for that URL)
+  const isStatic = STATIC_ASSET_PREFIXES.some(p => url.pathname.startsWith(p))
+  if (isStatic) {
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        if (cached) return cached
+        return fetch(event.request).then(response => {
+          if (response.ok) {
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, response.clone()))
+          }
+          return response
+        })
       })
-      return cached || fetchPromise
-    })
-  )
+    )
+  }
+  // Everything else (images, fonts not under /_next/static/, etc.): network-only
 })
 
 self.addEventListener('push', event => {
