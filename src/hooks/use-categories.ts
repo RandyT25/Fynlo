@@ -40,7 +40,7 @@ export function useCategories() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (authLoading || !user) { setIsLoading(false); return }
+    if (authLoading) return; if (!user) { setIsLoading(false); return }
     loadCategories().then(cats => {
       setCategories(cats)
       setIsLoading(false)

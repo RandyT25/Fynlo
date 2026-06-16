@@ -224,7 +224,7 @@ export function CalendarContent() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchEvents(date) }, [date, authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchEvents(date) }, [date, authLoading, user?.id])
 
   const selectedDateEvents = events.filter(e => isSameDay(parseISO(e.date), date))
   const eventDays = new Set(events.map(e => e.date))

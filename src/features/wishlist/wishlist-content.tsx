@@ -40,7 +40,7 @@ export function WishlistContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchItems() }, [fetchItems, authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchItems() }, [fetchItems, authLoading, user?.id])
 
   const addItem = async () => {
     if (!newItem.name.trim()) return

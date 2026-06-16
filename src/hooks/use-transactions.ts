@@ -66,7 +66,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
   }, [filters.accountId, filters.categoryId, filters.type, filters.dateFrom, filters.dateTo, filters.search, filters.limit])
 
   useEffect(() => {
-    if (authLoading || !user) { setIsLoading(false); return }
+    if (authLoading) return; if (!user) { setIsLoading(false); return }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTransactions()
   }, [fetchTransactions, authLoading, user?.id])

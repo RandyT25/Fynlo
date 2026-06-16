@@ -29,7 +29,7 @@ export function NotificationsContent() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchNotifications() }, [authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchNotifications() }, [authLoading, user?.id])
 
   const markRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id)

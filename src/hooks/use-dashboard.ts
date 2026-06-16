@@ -29,7 +29,7 @@ export function useDashboard() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (authLoading || !user) { setIsLoading(false); return }
+    if (authLoading) return; if (!user) { setIsLoading(false); return }
     fetchDashboardData()
   }, [authLoading, user?.id])
 

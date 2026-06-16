@@ -32,7 +32,7 @@ export function useAccounts() {
   }, [])
 
   useEffect(() => {
-    if (authLoading || !user) { setIsLoading(false); return }
+    if (authLoading) return; if (!user) { setIsLoading(false); return }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAccounts()
   }, [fetchAccounts, authLoading, user?.id])

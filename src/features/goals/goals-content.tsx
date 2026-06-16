@@ -49,7 +49,7 @@ export function GoalsContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchGoals() }, [fetchGoals, authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchGoals() }, [fetchGoals, authLoading, user?.id])
 
   const toggleComplete = async (goal: Goal) => {
     const { error } = await supabase.from('goals').update({ is_completed: !goal.is_completed }).eq('id', goal.id)

@@ -43,7 +43,7 @@ export function TasksContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchTasks() }, [fetchTasks, authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchTasks() }, [fetchTasks, authLoading, user?.id])
 
   const addTask = async () => {
     if (!newTask.title.trim()) return

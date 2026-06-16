@@ -49,7 +49,7 @@ export function RecurringContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchRecurrings() }, [fetchRecurrings, authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchRecurrings() }, [fetchRecurrings, authLoading, user?.id])
 
   const togglePause = async (r: RecurringTransaction) => {
     await supabase.from('recurring_transactions').update({ is_paused: !r.is_paused }).eq('id', r.id)

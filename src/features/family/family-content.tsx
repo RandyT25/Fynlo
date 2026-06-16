@@ -51,7 +51,7 @@ export function FamilyContent() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchFamily() }, [authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchFamily() }, [authLoading, user?.id])
 
   const createFamily = async () => {
     if (!familyName.trim()) return

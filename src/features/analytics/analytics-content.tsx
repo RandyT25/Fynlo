@@ -140,7 +140,7 @@ export function AnalyticsContent() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchAnalytics() }, [range, authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchAnalytics() }, [range, authLoading, user?.id])
 
   const axisStyle = { fontSize: 10, fill: isDark ? '#64748b' : '#94a3b8' }
 

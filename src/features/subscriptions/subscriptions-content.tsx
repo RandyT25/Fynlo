@@ -72,7 +72,7 @@ export function SubscriptionsContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchSubs() }, [fetchSubs, authLoading, user?.id])
+  useEffect(() => { if (authLoading) return; if (!user) { setIsLoading(false); return }; fetchSubs() }, [fetchSubs, authLoading, user?.id])
 
   // Auto-create subscription_renewal notifications for due subscriptions (deduped per day)
   useEffect(() => {
