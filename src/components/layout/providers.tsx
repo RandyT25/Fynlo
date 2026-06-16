@@ -5,7 +5,7 @@ import { ThemeProvider } from 'next-themes'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
-import type { Session } from '@supabase/supabase-js'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setUser, setProfile, setLoading } = useAuthStore()
@@ -66,7 +66,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     // Handle subsequent auth events (login, logout, background token refresh).
     // INITIAL_SESSION is skipped — we handle the initial state via getSession() above.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: AuthChangeEvent, session: Session | null) => {
         if (event === 'INITIAL_SESSION') return
         await syncUser(session)
       }
