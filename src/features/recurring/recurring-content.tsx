@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useCurrency } from '@/hooks/use-currency'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { recurringTransactionSchema, type RecurringTransactionInput } from '@/lib/validations/transaction'
@@ -33,6 +34,7 @@ const FREQ_LABELS: Record<string, string> = {
 }
 
 export function RecurringContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [recurrings, setRecurrings] = useState<RecurringTransaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -47,7 +49,7 @@ export function RecurringContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchRecurrings() }, [fetchRecurrings])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchRecurrings() }, [fetchRecurrings, authLoading, user?.id])
 
   const togglePause = async (r: RecurringTransaction) => {
     await supabase.from('recurring_transactions').update({ is_paused: !r.is_paused }).eq('id', r.id)

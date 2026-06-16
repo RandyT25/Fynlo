@@ -5,6 +5,7 @@ import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 import type { Account, Transaction, Budget, Goal, BillReminder } from '@/types/database'
 import { calculateNetBalance } from '@/lib/utils/index'
+import { useAuthStore } from '@/store/auth.store'
 
 interface DashboardData {
   accounts: Account[]
@@ -22,13 +23,15 @@ interface DashboardData {
 }
 
 export function useDashboard() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [data, setData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (authLoading || !user) { setIsLoading(false); return }
     fetchDashboardData()
-  }, [])
+  }, [authLoading, user?.id])
 
   async function fetchDashboardData() {
     setIsLoading(true)

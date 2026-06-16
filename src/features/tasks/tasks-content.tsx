@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +26,7 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 }
 
 export function TasksContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -41,7 +43,7 @@ export function TasksContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchTasks() }, [fetchTasks])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchTasks() }, [fetchTasks, authLoading, user?.id])
 
   const addTask = async () => {
     if (!newTask.title.trim()) return

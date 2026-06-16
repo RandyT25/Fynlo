@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Users, Plus, Crown, UserCheck, Eye, Mail, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +20,7 @@ const ROLE_ICONS = { owner: Crown, admin: UserCheck, member: Users, viewer: Eye 
 const ROLE_COLORS = { owner: '#F59E0B', admin: '#8B5CF6', member: '#3B82F6', viewer: '#6B7280' }
 
 export function FamilyContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [family, setFamily] = useState<Family | null>(null)
   const [members, setMembers] = useState<FamilyMember[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -49,7 +51,7 @@ export function FamilyContent() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-  useEffect(() => { fetchFamily() }, [])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchFamily() }, [authLoading, user?.id])
 
   const createFamily = async () => {
     if (!familyName.trim()) return

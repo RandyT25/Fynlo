@@ -9,6 +9,7 @@ import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useCategories } from '@/hooks/use-categories'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { budgetSchema, type BudgetInput } from '@/lib/validations/budget'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -33,6 +34,7 @@ interface BudgetWithMeta extends Budget {
 }
 
 export function BudgetsContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [budgets, setBudgets] = useState<BudgetWithMeta[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { categories } = useCategories()
@@ -72,7 +74,7 @@ export function BudgetsContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchData() }, [fetchData, authLoading, user?.id])
 
   const totalBudgeted = budgets.reduce((s, b) => s + b.amount, 0)
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0)

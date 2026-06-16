@@ -11,6 +11,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -47,6 +48,7 @@ function advanceBillingDate(date: string, cycle: string): string {
 }
 
 export function SubscriptionsContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -70,7 +72,7 @@ export function SubscriptionsContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchSubs() }, [fetchSubs])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchSubs() }, [fetchSubs, authLoading, user?.id])
 
   // Auto-create subscription_renewal notifications for due subscriptions (deduped per day)
   useEffect(() => {

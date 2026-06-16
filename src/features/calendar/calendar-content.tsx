@@ -5,6 +5,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { format, startOfMonth, endOfMonth, parseISO, isSameDay, addDays } from 'date-fns'
 import { formatCurrency } from '@/lib/utils/format'
 import { LoadingPage } from '@/components/shared/loading-spinner'
@@ -141,6 +142,7 @@ function projectRecurringDates(
 }
 
 export function CalendarContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [date, setDate] = useState<Date>(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -221,7 +223,8 @@ export function CalendarContent() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-  useEffect(() => { fetchEvents(date) }, [date])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchEvents(date) }, [date, authLoading, user?.id])
 
   const selectedDateEvents = events.filter(e => isSameDay(parseISO(e.date), date))
   const eventDays = new Set(events.map(e => e.date))

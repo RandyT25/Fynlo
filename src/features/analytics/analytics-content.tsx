@@ -7,6 +7,7 @@ import {
 import { TrendingUp, TrendingDown, Wallet, ChevronDown } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { formatCurrency } from '@/lib/utils/format'
 import { useCurrency } from '@/hooks/use-currency'
 import { format, subMonths, subDays } from 'date-fns'
@@ -51,6 +52,7 @@ const RANGES: { label: TimeRange; months?: number; days?: number }[] = [
 ]
 
 export function AnalyticsContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [range, setRange] = useState<TimeRange>('1M')
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -138,7 +140,7 @@ export function AnalyticsContent() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-  useEffect(() => { fetchAnalytics() }, [range])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchAnalytics() }, [range, authLoading, user?.id])
 
   const axisStyle = { fontSize: 10, fill: isDark ? '#64748b' : '#94a3b8' }
 

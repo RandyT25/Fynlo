@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import type { Transaction } from '@/types/database'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/store/auth.store'
 
 interface TransactionFilters {
   accountId?: string
@@ -16,6 +17,7 @@ interface TransactionFilters {
 }
 
 export function useTransactions(filters: TransactionFilters = {}) {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -64,9 +66,10 @@ export function useTransactions(filters: TransactionFilters = {}) {
   }, [filters.accountId, filters.categoryId, filters.type, filters.dateFrom, filters.dateTo, filters.search, filters.limit])
 
   useEffect(() => {
+    if (authLoading || !user) { setIsLoading(false); return }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTransactions()
-  }, [fetchTransactions])
+  }, [fetchTransactions, authLoading, user?.id])
 
   const deleteTransaction = async (id: string) => {
     const supabase = createClient()

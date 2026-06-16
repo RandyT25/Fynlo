@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useCurrency } from '@/hooks/use-currency'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +21,7 @@ import type { WishlistItem } from '@/types/database'
 const EMPTY_FORM = { name: '', description: '', target_amount: '', url: '' }
 
 export function WishlistContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [items, setItems] = useState<WishlistItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -38,7 +40,7 @@ export function WishlistContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchItems() }, [fetchItems])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchItems() }, [fetchItems, authLoading, user?.id])
 
   const addItem = async () => {
     if (!newItem.name.trim()) return

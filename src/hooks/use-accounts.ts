@@ -5,8 +5,10 @@ import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import type { Account } from '@/types/database'
 import { calculateNetBalance } from '@/lib/utils/index'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/store/auth.store'
 
 export function useAccounts() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,9 +32,10 @@ export function useAccounts() {
   }, [])
 
   useEffect(() => {
+    if (authLoading || !user) { setIsLoading(false); return }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAccounts()
-  }, [fetchAccounts])
+  }, [fetchAccounts, authLoading, user?.id])
 
   const totalBalance = calculateNetBalance(accounts.filter(a => a.is_active))
 

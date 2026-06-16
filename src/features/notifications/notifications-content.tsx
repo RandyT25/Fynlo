@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Bell } from 'lucide-react'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingPage } from '@/components/shared/loading-spinner'
 import { formatDateRelative } from '@/lib/utils/format'
@@ -15,6 +16,7 @@ const TYPE_COLORS: Record<string, string> = {
 }
 
 export function NotificationsContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
@@ -27,7 +29,7 @@ export function NotificationsContent() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-  useEffect(() => { fetchNotifications() }, [])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchNotifications() }, [authLoading, user?.id])
 
   const markRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id)

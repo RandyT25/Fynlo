@@ -9,6 +9,7 @@ import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { goalSchema, type GoalInput } from '@/lib/validations/goal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ import type { Goal } from '@/types/database'
 const GOAL_COLORS = ['#3B82F6', '#8B5CF6', '#22C55E', '#EF4444', '#F97316', '#F59E0B', '#10B981', '#EC4899']
 
 export function GoalsContent() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [goals, setGoals] = useState<Goal[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -47,7 +49,7 @@ export function GoalsContent() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchGoals() }, [fetchGoals])
+  useEffect(() => { if (authLoading || !user) { setIsLoading(false); return }; fetchGoals() }, [fetchGoals, authLoading, user?.id])
 
   const toggleComplete = async (goal: Goal) => {
     const { error } = await supabase.from('goals').update({ is_completed: !goal.is_completed }).eq('id', goal.id)

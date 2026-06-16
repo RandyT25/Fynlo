@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createAnyClient as createClient } from '@/lib/supabase/any-client'
 import type { Category } from '@/types/database'
+import { useAuthStore } from '@/store/auth.store'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 let _cache: Category[] | null = null
@@ -34,15 +35,17 @@ export function invalidateCategoriesCache() {
 }
 
 export function useCategories() {
+  const { user, isLoading: authLoading } = useAuthStore()
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (authLoading || !user) { setIsLoading(false); return }
     loadCategories().then(cats => {
       setCategories(cats)
       setIsLoading(false)
     })
-  }, [])
+  }, [authLoading, user?.id])
 
   return { categories, isLoading }
 }
