@@ -25,7 +25,7 @@ function dateLabel(date: string) {
 }
 
 export function DashboardContent() {
-  const { data, isLoading, refetch } = useDashboard()
+  const { data, isLoading, error, refetch } = useDashboard()
   const { profile } = useAuth()
   const currency = useCurrency()
   const [showAdd, setShowAdd] = useState(false)
@@ -39,6 +39,11 @@ export function DashboardContent() {
 
   return (
     <div className="flex flex-col min-h-full">
+      {error && !isLoading && (
+        <div className="mx-4 mt-3 px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-medium">
+          {error} — <button className="underline" onClick={refetch}>retry</button>
+        </div>
+      )}
 
       {/* ── Deep gradient hero ── */}
       <div className="relative gradient-hero text-white overflow-hidden" style={{ borderRadius: '0 0 2.5rem 2.5rem' }}>
