@@ -22,6 +22,16 @@ interface DashboardData {
   categorySpending: Array<{ name: string; amount: number; color: string; percentage: number }>
 }
 
+// Races a promise against a ms timeout. Throws if the timeout fires first.
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`[dashboard] ${label} timed out after ${ms}ms`)), ms)
+    ),
+  ])
+}
+
 export function useDashboard() {
   const { user, isLoading: authLoading } = useAuthStore()
   const [data, setData] = useState<DashboardData | null>(null)
@@ -31,12 +41,11 @@ export function useDashboard() {
   useEffect(() => {
     if (authLoading) return; if (!user) { setIsLoading(false); return }
 
-    // Timeout safety net: if Supabase never responds (hanging network request),
-    // unblock the UI after 20s so the user sees an error instead of forever skeleton.
+    // Hard fallback: if nothing below resolves in 10s, unblock the skeleton.
     const timer = setTimeout(() => {
       setIsLoading(false)
       setError('Data loading timed out. Please refresh.')
-    }, 20_000)
+    }, 10_000)
 
     fetchDashboardData().finally(() => clearTimeout(timer))
   }, [authLoading, user?.id])
@@ -46,10 +55,38 @@ export function useDashboard() {
     setError(null)
     try {
       const supabase = createClient()
+
+      // Pre-validate the session before firing parallel queries.
+      // getSession() internally calls __loadSession() which may call
+      // _callRefreshToken(). If the refresh token network request hangs
+      // indefinitely, ALL 7 parallel queries would also hang (they each
+      // call getSession() via fetchWithAuth). Racing against 8s surfaces
+      // the hang as an error instead of an infinite skeleton.
+      console.log('[dashboard] checking session')
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        8_000,
+        'getSession'
+      )
+      console.log('[dashboard] session valid:', !!session, session?.expires_at
+        ? `expires ${new Date(session.expires_at * 1000).toLocaleTimeString()}`
+        : 'no expiry')
+
+      if (!session) {
+        setError('Session expired. Please log in again.')
+        return
+      }
+
       const now = new Date()
       const monthStart = format(startOfMonth(now), 'yyyy-MM-dd')
       const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
 
+      // AbortSignal aborts the underlying fetch if queries hang at the network level.
+      // This is separate from the getSession() timeout above — it covers the case
+      // where auth is fine but the Supabase REST endpoint is unreachable.
+      const signal = AbortSignal.timeout(8_000)
+
+      console.log('[dashboard] running queries')
       const [
         { data: accounts, error: acctErr },
         { data: recentTxn, error: recentErr },
@@ -59,14 +96,15 @@ export function useDashboard() {
         { data: bills, error: billsErr },
         { data: cats, error: catsErr },
       ] = await Promise.all([
-        supabase.from('accounts').select('*').is('deleted_at', null).eq('is_active', true),
-        supabase.from('transactions').select('*, account:accounts!account_id(id,name,color,icon,type)').is('deleted_at', null).order('date', { ascending: false }).limit(10),
-        supabase.from('transactions').select('type,amount').is('deleted_at', null).gte('date', monthStart).lte('date', monthEnd),
-        supabase.from('budgets').select('*, category:categories(id,name,icon,color)').is('deleted_at', null).eq('is_active', true),
-        supabase.from('goals').select('*').is('deleted_at', null).eq('is_completed', false).order('priority', { ascending: false }).limit(6),
-        supabase.from('bill_reminders').select('*').is('deleted_at', null).eq('is_completed', false).gte('due_date', format(now, 'yyyy-MM-dd')).order('due_date', { ascending: true }).limit(5),
-        supabase.from('categories').select('id,name,icon,color').is('deleted_at', null),
+        supabase.from('accounts').select('*').is('deleted_at', null).eq('is_active', true).abortSignal(signal),
+        supabase.from('transactions').select('*, account:accounts!account_id(id,name,color,icon,type)').is('deleted_at', null).order('date', { ascending: false }).limit(10).abortSignal(signal),
+        supabase.from('transactions').select('type,amount').is('deleted_at', null).gte('date', monthStart).lte('date', monthEnd).abortSignal(signal),
+        supabase.from('budgets').select('*, category:categories(id,name,icon,color)').is('deleted_at', null).eq('is_active', true).abortSignal(signal),
+        supabase.from('goals').select('*').is('deleted_at', null).eq('is_completed', false).order('priority', { ascending: false }).limit(6).abortSignal(signal),
+        supabase.from('bill_reminders').select('*').is('deleted_at', null).eq('is_completed', false).gte('due_date', format(now, 'yyyy-MM-dd')).order('due_date', { ascending: true }).limit(5).abortSignal(signal),
+        supabase.from('categories').select('id,name,icon,color').is('deleted_at', null).abortSignal(signal),
       ])
+      console.log('[dashboard] queries done, acctErr:', acctErr?.message ?? null)
 
       // Accounts is the critical query — without it we can't compute balance
       if (acctErr) {
@@ -113,7 +151,7 @@ export function useDashboard() {
         categorySpending,
       })
     } catch (err) {
-      console.error('[useDashboard] fetch error:', err)
+      console.error('[dashboard] fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
     } finally {
       setIsLoading(false)
