@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/auth.store'
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { setUser, setProfile, setLoading } = useAuthStore()
+  const { setUser, setProfile, setLoading, setAccessToken } = useAuthStore()
 
   useEffect(() => {
     const supabase = createClient()
@@ -17,6 +17,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     async function syncUser(session: Session | null) {
       if (!mounted) return
       setUser(session?.user ?? null)
+      setAccessToken(session?.access_token ?? null)
       if (session?.user) {
         try {
           const { data: profileData } = await supabase
@@ -70,6 +71,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'SIGNED_OUT') {
           setUser(null)
           setProfile(null)
+          setAccessToken(null)
           setLoading(false)
           window.location.assign('/login')
           return
@@ -83,7 +85,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timeout)
       subscription.unsubscribe()
     }
-  }, [setUser, setProfile, setLoading])
+  }, [setUser, setProfile, setLoading, setAccessToken])
 
   return <>{children}</>
 }

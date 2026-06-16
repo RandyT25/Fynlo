@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { createDataClient } from '@/lib/supabase/any-client'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 import type { Account, Transaction, Budget, Goal, BillReminder } from '@/types/database'
 import { calculateNetBalance } from '@/lib/utils/index'
@@ -22,15 +22,6 @@ interface DashboardData {
   categorySpending: Array<{ name: string; amount: number; color: string; percentage: number }>
 }
 
-// Races a promise against a ms timeout. Throws if the timeout fires first.
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`[dashboard] ${label} timed out after ${ms}ms`)), ms)
-    ),
-  ])
-}
 
 export function useDashboard() {
   const { user, isLoading: authLoading } = useAuthStore()
@@ -54,37 +45,25 @@ export function useDashboard() {
     setIsLoading(true)
     setError(null)
     try {
-      const supabase = createClient()
-
-      // Pre-validate the session before firing parallel queries.
-      // getSession() internally calls __loadSession() which may call
-      // _callRefreshToken(). If the refresh token network request hangs
-      // indefinitely, ALL 7 parallel queries would also hang (they each
-      // call getSession() via fetchWithAuth). Racing against 8s surfaces
-      // the hang as an error instead of an infinite skeleton.
-      console.log('[dashboard] checking session')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sessionResp = await withTimeout(supabase.auth.getSession(), 8_000, 'getSession') as any
-      const session = sessionResp?.data?.session ?? null
-      console.log('[dashboard] session valid:', !!session, session?.expires_at
-        ? `expires ${new Date(session.expires_at * 1000).toLocaleTimeString()}`
-        : 'no expiry')
-
-      if (!session) {
+      // Use the access token stored in the auth store instead of calling
+      // supabase.auth.getSession(). getSession() can hang indefinitely if
+      // the browser intercepts the refresh-token network request (the
+      // "listener indicated async response but channel closed" error).
+      // createDataClient uses the accessToken option so _getAccessToken()
+      // returns the stored token directly — no network call, no hang.
+      const accessToken = useAuthStore.getState().accessToken
+      if (!accessToken) {
         setError('Session expired. Please log in again.')
         return
       }
+      const supabase = createDataClient(accessToken)
 
       const now = new Date()
       const monthStart = format(startOfMonth(now), 'yyyy-MM-dd')
       const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
 
-      // AbortSignal aborts the underlying fetch if queries hang at the network level.
-      // This is separate from the getSession() timeout above — it covers the case
-      // where auth is fine but the Supabase REST endpoint is unreachable.
       const signal = AbortSignal.timeout(8_000)
 
-      console.log('[dashboard] running queries')
       const [
         { data: accounts, error: acctErr },
         { data: recentTxn, error: recentErr },
@@ -115,7 +94,8 @@ export function useDashboard() {
 
       type CatInfo = { id: string; name: string; icon: string | null; color: string | null }
       const catById: Record<string, CatInfo> = {}
-      for (const c of (cats ?? [])) catById[c.id] = c as CatInfo
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const c of (cats ?? []) as any[]) catById[c.id] = c as CatInfo
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const recentWithCats = (recentTxn ?? []).map((t: any) => ({
         ...t,
@@ -159,7 +139,7 @@ export function useDashboard() {
   return { data, isLoading, error, refetch: fetchDashboardData }
 }
 
-async function getCashFlowData(supabase: ReturnType<typeof createClient>, months: number) {
+async function getCashFlowData(supabase: ReturnType<typeof createDataClient>, months: number) {
   const now = new Date()
   const oldest = format(new Date(now.getFullYear(), now.getMonth() - (months - 1), 1), 'yyyy-MM-dd')
 
@@ -187,7 +167,7 @@ async function getCashFlowData(supabase: ReturnType<typeof createClient>, months
   return results
 }
 
-async function getCategorySpending(supabase: ReturnType<typeof createClient>, start: string, end: string) {
+async function getCategorySpending(supabase: ReturnType<typeof createDataClient>, start: string, end: string) {
   const [{ data }, { data: cats }] = await Promise.all([
     supabase.from('transactions').select('amount,category_id').eq('type', 'expense').is('deleted_at', null).gte('date', start).lte('date', end),
     supabase.from('categories').select('id,name,color').is('deleted_at', null),
@@ -196,12 +176,14 @@ async function getCategorySpending(supabase: ReturnType<typeof createClient>, st
   if (!data) return []
 
   const catById: Record<string, { name: string; color: string }> = {}
-  for (const c of (cats ?? [])) catById[c.id] = { name: c.name, color: c.color }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const c of (cats ?? []) as any[]) catById[c.id] = { name: c.name, color: c.color }
 
   const grouped: Record<string, { name: string; amount: number; color: string }> = {}
   let total = 0
 
-  for (const t of data) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const t of data as any[]) {
     const cat = t.category_id ? (catById[t.category_id] ?? null) : null
     const key = t.category_id ?? 'uncategorized'
     const name = cat?.name ?? 'Uncategorized'
