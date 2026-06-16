@@ -30,81 +30,94 @@ export function useDashboard() {
 
   useEffect(() => {
     if (authLoading) return; if (!user) { setIsLoading(false); return }
-    fetchDashboardData()
+
+    // Timeout safety net: if Supabase never responds (hanging network request),
+    // unblock the UI after 20s so the user sees an error instead of forever skeleton.
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+      setError('Data loading timed out. Please refresh.')
+    }, 20_000)
+
+    fetchDashboardData().finally(() => clearTimeout(timer))
   }, [authLoading, user?.id])
 
   async function fetchDashboardData() {
     setIsLoading(true)
     setError(null)
-    const supabase = createClient()
-    const now = new Date()
-    const monthStart = format(startOfMonth(now), 'yyyy-MM-dd')
-    const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
+    try {
+      const supabase = createClient()
+      const now = new Date()
+      const monthStart = format(startOfMonth(now), 'yyyy-MM-dd')
+      const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
 
-    const [
-      { data: accounts, error: acctErr },
-      { data: recentTxn, error: recentErr },
-      { data: monthlyTxn, error: monthlyErr },
-      { data: budgets, error: budgetsErr },
-      { data: goals, error: goalsErr },
-      { data: bills, error: billsErr },
-      { data: cats, error: catsErr },
-    ] = await Promise.all([
-      supabase.from('accounts').select('*').is('deleted_at', null).eq('is_active', true),
-      supabase.from('transactions').select('*, account:accounts!account_id(id,name,color,icon,type)').is('deleted_at', null).order('date', { ascending: false }).limit(10),
-      supabase.from('transactions').select('type,amount').is('deleted_at', null).gte('date', monthStart).lte('date', monthEnd),
-      supabase.from('budgets').select('*, category:categories(id,name,icon,color)').is('deleted_at', null).eq('is_active', true),
-      supabase.from('goals').select('*').is('deleted_at', null).eq('is_completed', false).order('priority', { ascending: false }).limit(6),
-      supabase.from('bill_reminders').select('*').is('deleted_at', null).eq('is_completed', false).gte('due_date', format(now, 'yyyy-MM-dd')).order('due_date', { ascending: true }).limit(5),
-      supabase.from('categories').select('id,name,icon,color').is('deleted_at', null),
-    ])
+      const [
+        { data: accounts, error: acctErr },
+        { data: recentTxn, error: recentErr },
+        { data: monthlyTxn, error: monthlyErr },
+        { data: budgets, error: budgetsErr },
+        { data: goals, error: goalsErr },
+        { data: bills, error: billsErr },
+        { data: cats, error: catsErr },
+      ] = await Promise.all([
+        supabase.from('accounts').select('*').is('deleted_at', null).eq('is_active', true),
+        supabase.from('transactions').select('*, account:accounts!account_id(id,name,color,icon,type)').is('deleted_at', null).order('date', { ascending: false }).limit(10),
+        supabase.from('transactions').select('type,amount').is('deleted_at', null).gte('date', monthStart).lte('date', monthEnd),
+        supabase.from('budgets').select('*, category:categories(id,name,icon,color)').is('deleted_at', null).eq('is_active', true),
+        supabase.from('goals').select('*').is('deleted_at', null).eq('is_completed', false).order('priority', { ascending: false }).limit(6),
+        supabase.from('bill_reminders').select('*').is('deleted_at', null).eq('is_completed', false).gte('due_date', format(now, 'yyyy-MM-dd')).order('due_date', { ascending: true }).limit(5),
+        supabase.from('categories').select('id,name,icon,color').is('deleted_at', null),
+      ])
 
-    // Accounts is the critical query — without it we can't compute balance
-    if (acctErr) {
-      setError(acctErr.message)
+      // Accounts is the critical query — without it we can't compute balance
+      if (acctErr) {
+        setError(acctErr.message)
+        return
+      }
+      // Non-critical query errors: surface as a warning but continue with partial data
+      const sideErr = recentErr ?? monthlyErr ?? budgetsErr ?? goalsErr ?? billsErr ?? catsErr
+      if (sideErr) setError(sideErr.message)
+
+      type CatInfo = { id: string; name: string; icon: string | null; color: string | null }
+      const catById: Record<string, CatInfo> = {}
+      for (const c of (cats ?? [])) catById[c.id] = c as CatInfo
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const recentWithCats = (recentTxn ?? []).map((t: any) => ({
+        ...t,
+        category: t.category_id ? (catById[t.category_id] ?? null) : null,
+      }))
+
+      const accts = (accounts ?? []) as Account[]
+      const totalBalance = calculateNetBalance(accts)
+
+      const txns = (monthlyTxn ?? []) as Array<{ type: string; amount: number }>
+      const monthlyIncome = txns.filter(t => t.type === 'income' || t.type === 'refund').reduce((s, t) => s + t.amount, 0)
+      const monthlyExpenses = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+      const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0
+
+      // Cash flow for last 6 months
+      const cashFlowData = await getCashFlowData(supabase, 6)
+      const categorySpending = await getCategorySpending(supabase, monthStart, monthEnd)
+
+      setData({
+        accounts: accts,
+        recentTransactions: recentWithCats as Transaction[],
+        budgets: (budgets as Budget[]) ?? [],
+        goals: (goals as Goal[]) ?? [],
+        upcomingBills: (bills as BillReminder[]) ?? [],
+        totalBalance,
+        monthlyIncome,
+        monthlyExpenses,
+        savingsRate,
+        netWorth: totalBalance,
+        cashFlowData,
+        categorySpending,
+      })
+    } catch (err) {
+      console.error('[useDashboard] fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
+    } finally {
       setIsLoading(false)
-      return
     }
-    // Non-critical query errors: surface as a warning but continue with partial data
-    const sideErr = recentErr ?? monthlyErr ?? budgetsErr ?? goalsErr ?? billsErr ?? catsErr
-    if (sideErr) setError(sideErr.message)
-
-    type CatInfo = { id: string; name: string; icon: string | null; color: string | null }
-    const catById: Record<string, CatInfo> = {}
-    for (const c of (cats ?? [])) catById[c.id] = c as CatInfo
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recentWithCats = (recentTxn ?? []).map((t: any) => ({
-      ...t,
-      category: t.category_id ? (catById[t.category_id] ?? null) : null,
-    }))
-
-    const accts = (accounts ?? []) as Account[]
-    const totalBalance = calculateNetBalance(accts)
-
-    const txns = (monthlyTxn ?? []) as Array<{ type: string; amount: number }>
-    const monthlyIncome = txns.filter(t => t.type === 'income' || t.type === 'refund').reduce((s, t) => s + t.amount, 0)
-    const monthlyExpenses = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-    const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0
-
-    // Cash flow for last 6 months
-    const cashFlowData = await getCashFlowData(supabase, 6)
-    const categorySpending = await getCategorySpending(supabase, monthStart, monthEnd)
-
-    setData({
-      accounts: accts,
-      recentTransactions: recentWithCats as Transaction[],
-      budgets: (budgets as Budget[]) ?? [],
-      goals: (goals as Goal[]) ?? [],
-      upcomingBills: (bills as BillReminder[]) ?? [],
-      totalBalance,
-      monthlyIncome,
-      monthlyExpenses,
-      savingsRate,
-      netWorth: totalBalance,
-      cashFlowData,
-      categorySpending,
-    })
-    setIsLoading(false)
   }
 
   return { data, isLoading, error, refetch: fetchDashboardData }
