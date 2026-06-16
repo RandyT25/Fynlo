@@ -14,7 +14,7 @@ export async function updateSession(request: NextRequest) {
       getAll() {
         return request.cookies.getAll()
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         )
@@ -22,6 +22,13 @@ export async function updateSession(request: NextRequest) {
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)
         )
+        // Apply cache-control headers the library passes (prevents 304s from
+        // stripping Set-Cookie when the auth token is refreshed mid-request)
+        if (headers) {
+          Object.entries(headers).forEach(([key, value]) =>
+            supabaseResponse.headers.set(key, value)
+          )
+        }
       },
     },
   })
@@ -54,6 +61,12 @@ export async function updateSession(request: NextRequest) {
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
+
+  // Protected routes must never be served from cache — a cached 304 response
+  // strips Set-Cookie headers, so a refreshed auth token never reaches the
+  // browser. The client's old refresh token (already consumed by the server)
+  // then fails and the session is silently removed.
+  supabaseResponse.headers.set('Cache-Control', 'private, no-store')
 
   return supabaseResponse
 }
