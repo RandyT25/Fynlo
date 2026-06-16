@@ -57,7 +57,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     // token refresh if the access token is expired, bypassing the race condition
     // where the middleware's server-side refresh invalidates the browser's refresh
     // token before the new tokens reach the browser in the response cookies.
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       syncUser(session)
     }).catch(() => {
       if (mounted) { setUser(null); setProfile(null); setLoading(false) }
