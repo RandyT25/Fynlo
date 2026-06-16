@@ -5,7 +5,7 @@ import { Plus, ListChecks, Check, Trash2, Pencil } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,7 +33,7 @@ export function TasksContent() {
   const [newTask, setNewTask] = useState({ title: '', description: '', due_date: '', priority: 'medium' as Priority, category: '' })
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [editForm, setEditForm] = useState({ title: '', description: '', due_date: '', priority: 'medium' as Priority, category: '' })
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const fetchTasks = useCallback(async () => {
     setIsLoading(true)
@@ -47,7 +47,7 @@ export function TasksContent() {
 
   const addTask = async () => {
     if (!newTask.title.trim()) return
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) return
     const { error } = await supabase.from('tasks').insert({ ...newTask, user_id: user.id, due_date: newTask.due_date || null })
     if (error) { toast.error(error.message); return }

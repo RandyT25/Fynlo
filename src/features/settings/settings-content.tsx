@@ -7,7 +7,7 @@ import {
   Bell, Pencil, ShieldAlert, Globe, Palette, Camera,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuth } from '@/hooks/use-auth'
 import { useAuthStore } from '@/store/auth.store'
 import { Switch } from '@/components/ui/switch'
@@ -67,7 +67,7 @@ export function SettingsContent() {
   const { user, profile, signOut } = useAuth()
   const { setProfile } = useAuthStore()
   const { theme, setTheme } = useTheme()
-  const supabase = createClient()
+  const supabase = getDataClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [openSheet, setOpenSheet] = useState<ActiveSheet>(null)

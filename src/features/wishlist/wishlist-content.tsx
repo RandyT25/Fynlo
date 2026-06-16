@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useCurrency } from '@/hooks/use-currency'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +28,7 @@ export function WishlistContent() {
   const [editItem, setEditItem] = useState<WishlistItem | null>(null)
   const [newItem, setNewItem] = useState(EMPTY_FORM)
   const [editForm, setEditForm] = useState(EMPTY_FORM)
-  const supabase = createClient()
+  const supabase = getDataClient()
   const currencySymbol = useCurrencySymbol()
   const currency = useCurrency()
 
@@ -44,7 +44,7 @@ export function WishlistContent() {
 
   const addItem = async () => {
     if (!newItem.name.trim()) return
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) return
     const { error } = await supabase.from('wishlist').insert({
       user_id: user.id,
@@ -76,7 +76,7 @@ export function WishlistContent() {
   }
 
   const convertToGoal = async (item: WishlistItem) => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) return
     const { data: goal, error } = await supabase.from('goals').insert({
       user_id: user.id,

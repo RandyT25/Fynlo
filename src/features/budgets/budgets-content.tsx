@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useCategories } from '@/hooks/use-categories'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { budgetSchema, type BudgetInput } from '@/lib/validations/budget'
 import { useForm } from 'react-hook-form'
@@ -43,7 +43,7 @@ export function BudgetsContent() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [addTxnBudget, setAddTxnBudget] = useState<BudgetWithMeta | null>(null)
   const currency = useCurrency()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
@@ -229,7 +229,7 @@ function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
   const currency = useCurrency()
   const currencySymbol = useCurrencySymbol()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<BudgetInput>({
     resolver: zodResolver(budgetSchema),
@@ -273,7 +273,7 @@ function BudgetForm({ budget, categories, onSuccess, onCancel }: BudgetFormProps
 
   const onSubmit = async (data: BudgetInput) => {
     setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) { toast.error('Not authenticated'); setIsLoading(false); return }
 
     if (budget) {

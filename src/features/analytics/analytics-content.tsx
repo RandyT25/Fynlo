@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { TrendingUp, TrendingDown, Wallet, ChevronDown } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { formatCurrency } from '@/lib/utils/format'
 import { useCurrency } from '@/hooks/use-currency'
@@ -68,7 +68,7 @@ export function AnalyticsContent() {
   const currency = useCurrency()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const getDateRange = () => {
     const now = new Date()

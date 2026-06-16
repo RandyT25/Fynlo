@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Info } from 'lucide-react'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { accountSchema, type AccountInput } from '@/lib/validations/account'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,7 +58,7 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
   const [alreadyPaid, setAlreadyPaid] = useState<number | ''>('')
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<AccountInput>({
     resolver: zodResolver(accountSchema),
@@ -79,7 +80,7 @@ export function AccountForm({ account, presetType, onSuccess, onCancel }: Accoun
 
   const onSubmit = async (data: AccountInput) => {
     setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) { toast.error('Not authenticated'); setIsLoading(false); return }
 
     const isLoanType = data.type === 'loan' || data.type === 'credit_card'

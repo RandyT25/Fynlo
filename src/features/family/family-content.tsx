@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Plus, Crown, UserCheck, Eye, Mail, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,11 +31,11 @@ export function FamilyContent() {
   const [familyName, setFamilyName] = useState('')
   const [showEditFamily, setShowEditFamily] = useState(false)
   const [editFamilyName, setEditFamilyName] = useState('')
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const fetchFamily = async () => {
     setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) { setIsLoading(false); return }
 
     const { data: memberData } = await supabase.from('family_members').select('*, family:families(*)').eq('user_id', user.id).eq('status', 'active').maybeSingle()
@@ -55,7 +55,7 @@ export function FamilyContent() {
 
   const createFamily = async () => {
     if (!familyName.trim()) return
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) return
     const { data: fam, error } = await supabase.from('families').insert({ name: familyName, owner_id: user.id }).select().single()
     if (error) { toast.error(error.message); return }

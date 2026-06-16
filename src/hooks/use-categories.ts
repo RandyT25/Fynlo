@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import type { Category } from '@/types/database'
 import { useAuthStore } from '@/store/auth.store'
 
@@ -13,7 +13,7 @@ let _pending: Promise<Category[]> | null = null
 function loadCategories(): Promise<Category[]> {
   if (_cache && Date.now() - _cacheTime < CACHE_TTL_MS) return Promise.resolve(_cache)
   if (_pending) return _pending
-  const supabase = createClient()
+  const supabase = getDataClient()
   const promise = supabase
     .from('categories')
     .select('*')

@@ -8,7 +8,7 @@ import { useCurrency } from '@/hooks/use-currency'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { goalSchema, type GoalInput } from '@/lib/validations/goal'
 import { Button } from '@/components/ui/button'
@@ -39,7 +39,7 @@ export function GoalsContent() {
   const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null)
   const currency = useCurrency()
   const currencySymbol = useCurrencySymbol()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const fetchGoals = useCallback(async () => {
     setIsLoading(true)
@@ -290,7 +290,7 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<GoalInput>({
     resolver: zodResolver(goalSchema),
@@ -303,7 +303,7 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
 
   const onSubmit = async (data: GoalInput) => {
     setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) { toast.error('Not authenticated'); setIsLoading(false); return }
 
     if (goal) {

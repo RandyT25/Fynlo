@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import type { Transaction } from '@/types/database'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/auth.store'
@@ -26,7 +26,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
   const fetchTransactions = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    const supabase = createClient()
+    const supabase = getDataClient()
 
     let query = supabase
       .from('transactions')
@@ -72,7 +72,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
   }, [fetchTransactions, authLoading, user?.id])
 
   const deleteTransaction = async (id: string) => {
-    const supabase = createClient()
+    const supabase = getDataClient()
     const { error: err } = await supabase
       .from('transactions')
       .update({ deleted_at: new Date().toISOString() })

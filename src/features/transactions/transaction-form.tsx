@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
+import { useAuthStore } from '@/store/auth.store'
 import { transactionSchema, type TransactionInput } from '@/lib/validations/transaction'
 import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,7 +42,7 @@ export function TransactionForm({ transaction, initialValues, onSuccess, onCance
   const { categories } = useCategories()
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransactionInput>({
     resolver: zodResolver(transactionSchema),
@@ -128,7 +129,7 @@ export function TransactionForm({ transaction, initialValues, onSuccess, onCance
 
   const onSubmit = async (data: TransactionInput) => {
     setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) { toast.error('Not authenticated'); setIsLoading(false); return }
 
     const payload = { ...data, user_id: user.id, to_account_id: isTransfer ? data.to_account_id : null }

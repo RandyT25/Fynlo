@@ -7,7 +7,7 @@ import { format, addDays, addWeeks, addMonths, addYears } from 'date-fns'
 import { toast } from 'sonner'
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useCurrency } from '@/hooks/use-currency'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -39,7 +39,7 @@ export function RecurringContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<RecurringTransaction | null>(null)
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const fetchRecurrings = useCallback(async () => {
     setIsLoading(true)
@@ -150,7 +150,7 @@ function RecurringForm({ onSuccess, onCancel }: RecurringFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { accounts } = useAccounts()
   const currencySymbol = useCurrencySymbol()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const userCurrencyCode = useCurrency()
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<RecurringTransactionInput>({
@@ -175,7 +175,7 @@ function RecurringForm({ onSuccess, onCancel }: RecurringFormProps) {
 
   const onSubmit = async (data: RecurringTransactionInput) => {
     setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) { toast.error('Not authenticated'); setIsLoading(false); return }
     const next_date = getNextDate(data.start_date, data.frequency)
     const { error } = await supabase.from('recurring_transactions').insert({ ...data, user_id: user.id, next_date })

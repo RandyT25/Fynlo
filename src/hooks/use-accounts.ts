@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import type { Account } from '@/types/database'
 import { calculateNetBalance } from '@/lib/utils/index'
 import { toast } from 'sonner'
@@ -16,7 +16,7 @@ export function useAccounts() {
   const fetchAccounts = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    const supabase = createClient()
+    const supabase = getDataClient()
     const { data, error: err } = await supabase
       .from('accounts')
       .select('*')
@@ -40,7 +40,7 @@ export function useAccounts() {
   const totalBalance = calculateNetBalance(accounts.filter(a => a.is_active))
 
   const deleteAccount = async (id: string) => {
-    const supabase = createClient()
+    const supabase = getDataClient()
     const { error: err } = await supabase
       .from('accounts')
       .update({ deleted_at: new Date().toISOString() })

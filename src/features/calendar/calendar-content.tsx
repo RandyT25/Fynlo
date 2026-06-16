@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { format, startOfMonth, endOfMonth, parseISO, isSameDay, addDays } from 'date-fns'
 import { formatCurrency } from '@/lib/utils/format'
@@ -146,7 +146,7 @@ export function CalendarContent() {
   const [date, setDate] = useState<Date>(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
+  const supabase = getDataClient()
   const defaultCurrency = useCurrency()
 
   const fetchEvents = async (d: Date) => {

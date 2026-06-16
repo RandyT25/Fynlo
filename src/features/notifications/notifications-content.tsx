@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Bell } from 'lucide-react'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingPage } from '@/components/shared/loading-spinner'
@@ -19,7 +19,7 @@ export function NotificationsContent() {
   const { user, isLoading: authLoading } = useAuthStore()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const fetchNotifications = async () => {
     setIsLoading(true)

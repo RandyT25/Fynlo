@@ -10,7 +10,7 @@ import { useCurrencySymbol } from '@/hooks/use-currency-symbol'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { createAnyClient as createClient } from '@/lib/supabase/any-client'
+import { getDataClient } from '@/lib/supabase/any-client'
 import { useAuthStore } from '@/store/auth.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,7 +58,7 @@ export function SubscriptionsContent() {
   const [payAccountId, setPayAccountId] = useState('')
   const [payLoading, setPayLoading] = useState(false)
   const currency = useCurrency()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const fetchSubs = useCallback(async () => {
     setIsLoading(true)
@@ -78,7 +78,7 @@ export function SubscriptionsContent() {
   useEffect(() => {
     if (!subscriptions.length) return
     const generateNotifications = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = useAuthStore.getState().user
       if (!user) return
 
       const today = format(new Date(), 'yyyy-MM-dd')
@@ -144,7 +144,7 @@ export function SubscriptionsContent() {
   const markAsPaid = async () => {
     if (!payingSub || !payAccountId) { toast.error('Select an account'); return }
     setPayLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) { setPayLoading(false); return }
 
     const nextDate = advanceBillingDate(payingSub.next_billing_date, payingSub.billing_cycle)
@@ -382,7 +382,7 @@ function SubscriptionForm({ sub, onSuccess, onCancel, onDelete }: SubscriptionFo
   const [isLoading, setIsLoading] = useState(false)
   const userCurrency = useCurrency()
   const currencySymbol = useCurrencySymbol()
-  const supabase = createClient()
+  const supabase = getDataClient()
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<SubscriptionInput>({
     resolver: zodResolver(subscriptionSchema),
@@ -397,7 +397,7 @@ function SubscriptionForm({ sub, onSuccess, onCancel, onDelete }: SubscriptionFo
 
   const onSubmit = async (data: SubscriptionInput) => {
     setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = useAuthStore.getState().user
     if (!user) { toast.error('Not authenticated'); setIsLoading(false); return }
     const payload = { ...data, website_url: data.website_url || null }
     if (sub) {
