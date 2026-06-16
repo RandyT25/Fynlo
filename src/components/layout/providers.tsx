@@ -65,8 +65,15 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     // getSession() separately to avoid a race where getSession() blocks on
     // the auth lock while the client is mid-refresh, causing an indefinite hang.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
+      async (event: AuthChangeEvent, session: Session | null) => {
         clearTimeout(timeout)
+        if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile(null)
+          setLoading(false)
+          window.location.assign('/login')
+          return
+        }
         await syncUser(session)
       }
     )
