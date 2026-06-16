@@ -26,9 +26,16 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
+  // Use getSession() instead of getUser() to avoid consuming the browser's
+  // refresh token. getUser() triggers a server-side token exchange which
+  // invalidates the rotating refresh token before the new one reaches the
+  // browser — causing the browser client's own refresh to fail on next load.
+  // getSession() reads the existing session from cookies without an API call,
+  // preserving the browser client's ability to refresh its own token.
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   const protectedRoutes = ['/dashboard', '/transactions', '/accounts', '/budgets', '/goals', '/analytics', '/calendar', '/subscriptions', '/family', '/settings', '/more', '/recurring', '/tasks', '/wishlist', '/notifications']
   const authRoutes = ['/login', '/signup', '/forgot-password']

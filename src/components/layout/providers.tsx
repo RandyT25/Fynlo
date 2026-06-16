@@ -53,27 +53,27 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mounted) setLoading(false)
     }
 
-    // Bootstrap from the current session directly — this triggers a client-side
-    // token refresh if the access token is expired, bypassing the race condition
-    // where the middleware's server-side refresh invalidates the browser's refresh
-    // token before the new tokens reach the browser in the response cookies.
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
-      syncUser(session)
-    }).catch(() => {
-      if (mounted) { setUser(null); setProfile(null); setLoading(false) }
-    })
+    // Safety net: if INITIAL_SESSION never fires (e.g. Supabase hangs),
+    // unblock the UI after 8 seconds so users see zeroes instead of
+    // an infinite skeleton.
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 8000)
 
-    // Handle subsequent auth events (login, logout, background token refresh).
-    // INITIAL_SESSION is skipped — we handle the initial state via getSession() above.
+    // onAuthStateChange fires INITIAL_SESSION on subscription, which is the
+    // correct hook for bootstrapping session state. We no longer call
+    // getSession() separately to avoid a race where getSession() blocks on
+    // the auth lock while the client is mid-refresh, causing an indefinite hang.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
-        if (event === 'INITIAL_SESSION') return
+      async (_event: AuthChangeEvent, session: Session | null) => {
+        clearTimeout(timeout)
         await syncUser(session)
       }
     )
 
     return () => {
       mounted = false
+      clearTimeout(timeout)
       subscription.unsubscribe()
     }
   }, [setUser, setProfile, setLoading])
